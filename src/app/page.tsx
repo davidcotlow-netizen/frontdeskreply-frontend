@@ -79,7 +79,7 @@ export default function DashboardPage() {
         getQueue(businessId),
       ]);
       setSummary(s);
-      setQueue(q.items || []);
+      setQueue((q as any).items || []);
       setLastRefresh(new Date());
     } catch (e) {
       console.error("Dashboard load error:", e);
