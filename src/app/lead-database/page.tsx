@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-style";
 
 const FALLBACK_BUSINESS_ID = "00000000-0000-0000-0000-000000000001";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
