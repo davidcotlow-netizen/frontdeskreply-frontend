@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 
 const FALLBACK_BUSINESS_ID = "00000000-0000-0000-0000-000000000001";
-const API_BASE = "http://127.0.0.1:8000/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
 type Period = "today" | "week" | "month";
 
