@@ -103,91 +103,97 @@ function exportToXLS(leads: Lead[], businessName: string) {
     return map[intent] || "background:#E8F0FE;color:#1A56DB";
   }
 
+  const TD = "white-space:nowrap;overflow:hidden;font-family:Arial,sans-serif;font-size:12px;";
+  const BORDER = `border-bottom:1px solid ${midGray};`;
+
   const rows = leads.map((l, i) => {
     const bg = i % 2 === 0 ? "#FFFFFF" : "#F7F8FA";
     const label = INTENT_LABELS[l.top_intent] || l.top_intent;
+    const fmtFirst = formatDate(l.first_contact);
+    const fmtLast = formatDate(l.last_contact);
     return `
-      <tr style="background:${bg}">
-        <td style="text-align:center;color:#6B7280;font-size:11px;padding:7px 6px;border-bottom:1px solid ${midGray}">${i + 1}</td>
-        <td style="font-weight:500;padding:7px 10px;border-bottom:1px solid ${midGray}">${l.name}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid ${midGray};color:${l.email ? "#1A1F2E" : "#BBBBBB"}">${l.email || "—"}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid ${midGray};color:${l.phone ? "#1A1F2E" : "#BBBBBB"}">${l.phone || "—"}</td>
-        <td style="text-align:center;padding:7px 6px;border-bottom:1px solid ${midGray};color:#4A5568;font-size:12px">${formatDate(l.first_contact)}</td>
-        <td style="text-align:center;padding:7px 6px;border-bottom:1px solid ${midGray};color:#4A5568;font-size:12px">${formatDate(l.last_contact)}</td>
-        <td style="text-align:center;padding:7px 6px;border-bottom:1px solid ${midGray}">
-          <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;${intentStyle(l.top_intent)}">${label}</span>
+      <tr style="height:28px;background:${bg}">
+        <td style="${TD}${BORDER}text-align:center;color:#9CA3AF;width:36px;padding:0 6px">${i + 1}</td>
+        <td style="${TD}${BORDER}font-weight:600;color:#1A1F2E;width:150px;padding:0 12px">${l.name}</td>
+        <td style="${TD}${BORDER}color:${l.email ? "#374151" : "#D1D5DB"};width:220px;padding:0 12px">${l.email || "\u2014"}</td>
+        <td style="${TD}${BORDER}color:${l.phone ? "#374151" : "#D1D5DB"};width:140px;padding:0 12px">${l.phone || "\u2014"}</td>
+        <td style="${TD}${BORDER}text-align:center;color:#6B7280;width:120px;padding:0 8px">${fmtFirst}</td>
+        <td style="${TD}${BORDER}text-align:center;color:#6B7280;width:120px;padding:0 8px">${fmtLast}</td>
+        <td style="${TD}${BORDER}text-align:center;width:110px;padding:0 8px">
+          <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:3px;${intentStyle(l.top_intent)}">${label}</span>
         </td>
       </tr>`;
   }).join("");
 
-  const html = `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office"
-          xmlns:x="urn:schemas-microsoft-com:office:excel"
-          xmlns="http://www.w3.org/TR/REC-html40">
-    <head>
-      <meta charset="UTF-8">
-      <!--[if gte mso 9]>
-      <xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
-        <x:Name>Lead Database</x:Name>
-        <x:WorksheetOptions><x:DisplayGridlines><x:Value>False</x:Value></x:DisplayGridlines></x:WorksheetOptions>
-      </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
-      <![endif]-->
-      <style>
-        body { font-family: Arial, sans-serif; font-size: 13px; }
-        table { border-collapse: collapse; width: 100%; }
-        td, th { font-family: Arial, sans-serif; }
-      </style>
-    </head>
-    <body>
-    <table>
-      <tr>
-        <td colspan="7" style="background:${darkBg};color:#FFFFFF;font-size:14px;font-weight:bold;padding:12px 16px;letter-spacing:0.02em">
-          FrontdeskReply &nbsp;&middot;&nbsp; Customer Lead Intelligence Report
-        </td>
-      </tr>
-      <tr>
-        <td colspan="7" style="background:${darkBg};color:#888888;font-size:10px;padding:4px 16px 10px">
-          Exported ${today} &nbsp;&middot;&nbsp; All time &nbsp;&middot;&nbsp; Confidential
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2" style="background:${lightGray};text-align:center;padding:12px 8px;border:1px solid ${midGray};border-left:4px solid ${accent}">
-          <div style="font-size:22px;font-weight:700;color:#1A1F2E">${leads.length}</div>
-          <div style="font-size:9px;color:#6B7280;letter-spacing:0.05em;margin-top:2px">TOTAL LEADS</div>
-        </td>
-        <td colspan="2" style="background:${lightGray};text-align:center;padding:12px 8px;border:1px solid ${midGray};border-left:4px solid #10B981">
-          <div style="font-size:22px;font-weight:700;color:#1A1F2E">${emailCount}</div>
-          <div style="font-size:9px;color:#6B7280;letter-spacing:0.05em;margin-top:2px">HAVE EMAIL</div>
-        </td>
-        <td style="background:${lightGray};text-align:center;padding:12px 8px;border:1px solid ${midGray};border-left:4px solid #3B82F6">
-          <div style="font-size:22px;font-weight:700;color:#1A1F2E">${phoneCount}</div>
-          <div style="font-size:9px;color:#6B7280;letter-spacing:0.05em;margin-top:2px">HAVE PHONE</div>
-        </td>
-        <td colspan="2" style="background:${lightGray};text-align:center;padding:12px 8px;border:1px solid ${midGray};border-left:4px solid #8B5CF6">
-          <div style="font-size:22px;font-weight:700;color:#1A1F2E">${thisMonth}</div>
-          <div style="font-size:9px;color:#6B7280;letter-spacing:0.05em;margin-top:2px">NEW THIS MONTH</div>
-        </td>
-      </tr>
-      <tr><td colspan="7" style="padding:4px;background:#FFFFFF"></td></tr>
-      <tr style="background:${accent}">
-        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;width:40px">#</th>
-        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 12px;text-align:left;width:160px">CUSTOMER NAME</th>
-        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 12px;text-align:left;width:200px">EMAIL ADDRESS</th>
-        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 12px;text-align:left;width:130px">PHONE NUMBER</th>
-        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;width:110px">FIRST CONTACT</th>
-        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;width:110px">LAST CONTACT</th>
-        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;width:120px">PRIMARY INQUIRY</th>
-      </tr>
-      ${rows}
-      <tr>
-        <td colspan="7" style="background:${lightGray};color:#6B7280;font-size:10px;font-style:italic;padding:7px 12px;border-top:1px solid ${midGray}">
-          Showing ${leads.length} of ${leads.length} leads &nbsp;&middot;&nbsp; All time
-        </td>
-      </tr>
-    </table>
-    </body></html>`;
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:x="urn:schemas-microsoft-com:office:excel"
+    xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>Lead Database</x:Name>
+<x:WorksheetOptions>
+  <x:DisplayGridlines><x:Value>False</x:Value></x:DisplayGridlines>
+  <x:FreezePanes/>
+  <x:FrozenNoSplit/>
+  <x:SplitHorizontal>6</x:SplitHorizontal>
+  <x:TopRowBottomPane>6</x:TopRowBottomPane>
+</x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>
+  body,table,td,th { font-family: Arial, sans-serif; }
+  table { border-collapse: collapse; }
+</style>
+</head>
+<body>
+<table style="width:900px">
+  <tr style="height:40px">
+    <td colspan="7" style="background:${darkBg};color:#FFFFFF;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;padding:0 18px;letter-spacing:0.01em;white-space:nowrap">
+      FrontdeskReply &nbsp;&nbsp;&middot;&nbsp;&nbsp; Customer Lead Intelligence Report
+    </td>
+  </tr>
+  <tr style="height:22px">
+    <td colspan="7" style="background:${darkBg};color:#6B7280;font-family:Arial,sans-serif;font-size:10px;padding:0 18px 6px;white-space:nowrap">
+      Exported ${today} &nbsp;&nbsp;&middot;&nbsp;&nbsp; All time &nbsp;&nbsp;&middot;&nbsp;&nbsp; Confidential
+    </td>
+  </tr>
+  <tr style="height:56px">
+    <td colspan="2" style="background:${lightGray};border:1px solid ${midGray};border-left:4px solid ${accent};text-align:center;vertical-align:middle;font-family:Arial,sans-serif;padding:6px 8px">
+      <div style="font-size:26px;font-weight:700;color:#111827;line-height:1.1">${leads.length}</div>
+      <div style="font-size:9px;font-weight:700;color:#9CA3AF;letter-spacing:0.08em;margin-top:4px">TOTAL LEADS</div>
+    </td>
+    <td colspan="2" style="background:${lightGray};border:1px solid ${midGray};border-left:4px solid #10B981;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;padding:6px 8px">
+      <div style="font-size:26px;font-weight:700;color:#111827;line-height:1.1">${emailCount}</div>
+      <div style="font-size:9px;font-weight:700;color:#9CA3AF;letter-spacing:0.08em;margin-top:4px">HAVE EMAIL</div>
+    </td>
+    <td style="background:${lightGray};border:1px solid ${midGray};border-left:4px solid #3B82F6;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;padding:6px 8px">
+      <div style="font-size:26px;font-weight:700;color:#111827;line-height:1.1">${phoneCount}</div>
+      <div style="font-size:9px;font-weight:700;color:#9CA3AF;letter-spacing:0.08em;margin-top:4px">HAVE PHONE</div>
+    </td>
+    <td colspan="2" style="background:${lightGray};border:1px solid ${midGray};border-left:4px solid #8B5CF6;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;padding:6px 8px">
+      <div style="font-size:26px;font-weight:700;color:#111827;line-height:1.1">${thisMonth}</div>
+      <div style="font-size:9px;font-weight:700;color:#9CA3AF;letter-spacing:0.08em;margin-top:4px">NEW THIS MONTH</div>
+    </td>
+  </tr>
+  <tr style="height:10px"><td colspan="7" style="background:#FFFFFF;border:none"></td></tr>
+  <tr style="height:32px;background:${accent}">
+    <th style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:10px;font-weight:700;padding:0 6px;text-align:center;width:36px;white-space:nowrap;letter-spacing:0.06em">#</th>
+    <th style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:10px;font-weight:700;padding:0 12px;text-align:left;width:150px;white-space:nowrap;letter-spacing:0.06em">CUSTOMER NAME</th>
+    <th style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:10px;font-weight:700;padding:0 12px;text-align:left;width:220px;white-space:nowrap;letter-spacing:0.06em">EMAIL ADDRESS</th>
+    <th style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:10px;font-weight:700;padding:0 12px;text-align:left;width:140px;white-space:nowrap;letter-spacing:0.06em">PHONE NUMBER</th>
+    <th style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:10px;font-weight:700;padding:0 8px;text-align:center;width:120px;white-space:nowrap;letter-spacing:0.06em">FIRST CONTACT</th>
+    <th style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:10px;font-weight:700;padding:0 8px;text-align:center;width:120px;white-space:nowrap;letter-spacing:0.06em">LAST CONTACT</th>
+    <th style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:10px;font-weight:700;padding:0 8px;text-align:center;width:110px;white-space:nowrap;letter-spacing:0.06em">PRIMARY INQUIRY</th>
+  </tr>
+  ${rows}
+  <tr style="height:28px">
+    <td colspan="7" style="background:${lightGray};color:#9CA3AF;font-family:Arial,sans-serif;font-size:10px;font-style:italic;padding:0 14px;border-top:2px solid ${midGray};white-space:nowrap;vertical-align:middle">
+      Showing ${leads.length} of ${leads.length} leads &nbsp;&middot;&nbsp; All time
+    </td>
+  </tr>
+</table>
+</body></html>`;
 
-  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -379,8 +385,6 @@ export default function LeadDatabasePage() {
         </div>
       ) : (
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
-
-          {/* Table header */}
           <div style={{
             display: "grid", gridTemplateColumns: "2fr 2fr 1.2fr 1fr 1fr 1.2fr",
             padding: "10px 18px", borderBottom: "1px solid var(--border-subtle)",
@@ -411,7 +415,6 @@ export default function LeadDatabasePage() {
             ))}
           </div>
 
-          {/* Table rows */}
           {filtered.map((lead, idx) => {
             const isOpen = expanded === lead.id;
             const intentColor = INTENT_COLORS[lead.top_intent] || "#6b7280";
@@ -431,7 +434,6 @@ export default function LeadDatabasePage() {
                   onMouseEnter={e => { if (!isOpen) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.02)"; }}
                   onMouseLeave={e => { if (!isOpen) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
                 >
-                  {/* Name */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{
                       width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
@@ -446,20 +448,12 @@ export default function LeadDatabasePage() {
                     </span>
                   </div>
 
-                  {/* Contact */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 2, justifyContent: "center" }}>
-                    {lead.email && (
-                      <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>✉️ {lead.email}</span>
-                    )}
-                    {lead.phone && (
-                      <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>📱 {lead.phone}</span>
-                    )}
-                    {!lead.email && !lead.phone && (
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>No contact info</span>
-                    )}
+                    {lead.email && <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>✉️ {lead.email}</span>}
+                    {lead.phone && <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>📱 {lead.phone}</span>}
+                    {!lead.email && !lead.phone && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>No contact info</span>}
                   </div>
 
-                  {/* Intent */}
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <span style={{
                       fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 6,
@@ -468,27 +462,21 @@ export default function LeadDatabasePage() {
                     }}>{intentLabel}</span>
                   </div>
 
-                  {/* Message count */}
                   <div style={{ display: "flex", alignItems: "center" }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>
-                      {lead.message_count}
-                    </span>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>{lead.message_count}</span>
                     <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>msg{lead.message_count !== 1 ? "s" : ""}</span>
                   </div>
 
-                  {/* First contact */}
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>{formatDate(lead.first_contact)}</span>
                   </div>
 
-                  {/* Last contact */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>{timeAgo(lead.last_contact)}</span>
                     <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{isOpen ? "▲" : "▼"}</span>
                   </div>
                 </div>
 
-                {/* Expanded row */}
                 {isOpen && (
                   <div style={{
                     padding: "16px 18px 18px 70px",
