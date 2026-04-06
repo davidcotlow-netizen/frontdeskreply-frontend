@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
-import * as XLSX from "xlsx-style";
 
 const FALLBACK_BUSINESS_ID = "00000000-0000-0000-0000-000000000001";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -71,20 +70,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-function cellStyle(overrides: any = {}) {
-  return {
-    font: { name: "Arial", sz: 10, color: { rgb: "1A1F2E" }, ...overrides.font },
-    fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" }, ...overrides.fill },
-    alignment: { horizontal: "left", vertical: "center", ...overrides.alignment },
-    border: {
-      bottom: { style: "thin", color: { rgb: "E2E5EA" } },
-      ...overrides.border,
-    },
-    ...overrides,
-  };
-}
-
-function exportToXLSX(leads: Lead[], businessName: string) {
+function exportToXLS(leads: Lead[], businessName: string) {
   const today = new Date().toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
   });
@@ -97,176 +83,117 @@ function exportToXLSX(leads: Lead[], businessName: string) {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
 
-  // Build array-of-arrays
-  const aoa: any[][] = [
-    [`FrontdeskReply  ·  Customer Lead Intelligence Report`],                    // Row 1
-    [`Exported ${today}  ·  All time  ·  Confidential`],                          // Row 2
-    [`${leads.length}\nTOTAL LEADS`, ``, `${emailCount}\nHAVE EMAIL`, ``, `${phoneCount}\nHAVE PHONE`, ``, `${thisMonth}\nNEW THIS MONTH`], // Row 3
-    [],                                                                            // Row 4 spacer
-    ["#", "Customer Name", "Email Address", "Phone Number", "First Contact", "Last Contact", "Primary Inquiry"], // Row 5
-    ...leads.map((l, i) => [
-      i + 1,
-      l.name,
-      l.email || "—",
-      l.phone || "—",
-      formatDate(l.first_contact),
-      formatDate(l.last_contact),
-      INTENT_LABELS[l.top_intent] || l.top_intent,
-    ]),
-    [`Showing ${leads.length} of ${leads.length} leads  ·  All time`],            // Footer
-  ];
+  const accent = "#F97316";
+  const darkBg = "#0F1923";
+  const lightGray = "#F7F8FA";
+  const midGray = "#E2E5EA";
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-  // Column widths
-  ws["!cols"] = [
-    { wch: 5 }, { wch: 22 }, { wch: 30 },
-    { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 18 },
-  ];
-
-  // Row heights
-  ws["!rows"] = [
-    { hpt: 36 }, // banner
-    { hpt: 20 }, // subtitle
-    { hpt: 44 }, // KPIs
-    { hpt: 8 },  // spacer
-    { hpt: 28 }, // headers
-    ...leads.map(() => ({ hpt: 26 })),
-    { hpt: 22 }, // footer
-  ];
-
-  // Merges
-  ws["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // banner
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }, // subtitle
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }, // KPI 1
-    { s: { r: 2, c: 2 }, e: { r: 2, c: 3 } }, // KPI 2
-    { s: { r: 2, c: 4 }, e: { r: 2, c: 5 } }, // KPI 3
-    { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } }, // spacer
-    { s: { r: leads.length + 5, c: 0 }, e: { r: leads.length + 5, c: 6 } }, // footer
-  ];
-
-  // ── Helper to apply style to a cell ──────────────────────────────────
-  function applyStyle(cellRef: string, s: any, value?: any) {
-    if (!ws[cellRef]) ws[cellRef] = { v: value ?? "", t: "s" };
-    ws[cellRef].s = s;
+  function intentStyle(intent: string): string {
+    const map: Record<string, string> = {
+      faq: "background:#E6F4EA;color:#1E6E35",
+      general_inquiry: "background:#E6F4EA;color:#1E6E35",
+      inquiry: "background:#E6F4EA;color:#1E6E35",
+      booking: "background:#FFF7ED;color:#C2410C",
+      booking_request: "background:#FFF7ED;color:#C2410C",
+      quote: "background:#F5F3FF;color:#6D28D9",
+      quote_request: "background:#F5F3FF;color:#6D28D9",
+      emergency: "background:#FEF2F2;color:#B91C1C",
+      emergency_service: "background:#FEF2F2;color:#B91C1C",
+    };
+    return map[intent] || "background:#E8F0FE;color:#1A56DB";
   }
 
-  // ── Row 1: Banner ────────────────────────────────────────────────────
-  applyStyle("A1", cellStyle({
-    font: { name: "Arial", sz: 13, bold: true, color: { rgb: "FFFFFF" } },
-    fill: { patternType: "solid", fgColor: { rgb: "0F1923" } },
-    alignment: { horizontal: "left", vertical: "center", indent: 2 },
-    border: {},
-  }));
+  const rows = leads.map((l, i) => {
+    const bg = i % 2 === 0 ? "#FFFFFF" : "#F7F8FA";
+    const label = INTENT_LABELS[l.top_intent] || l.top_intent;
+    return `
+      <tr style="background:${bg}">
+        <td style="text-align:center;color:#6B7280;font-size:11px;padding:7px 6px;border-bottom:1px solid ${midGray}">${i + 1}</td>
+        <td style="font-weight:500;padding:7px 10px;border-bottom:1px solid ${midGray}">${l.name}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid ${midGray};color:${l.email ? "#1A1F2E" : "#BBBBBB"}">${l.email || "—"}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid ${midGray};color:${l.phone ? "#1A1F2E" : "#BBBBBB"}">${l.phone || "—"}</td>
+        <td style="text-align:center;padding:7px 6px;border-bottom:1px solid ${midGray};color:#4A5568;font-size:12px">${formatDate(l.first_contact)}</td>
+        <td style="text-align:center;padding:7px 6px;border-bottom:1px solid ${midGray};color:#4A5568;font-size:12px">${formatDate(l.last_contact)}</td>
+        <td style="text-align:center;padding:7px 6px;border-bottom:1px solid ${midGray}">
+          <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;${intentStyle(l.top_intent)}">${label}</span>
+        </td>
+      </tr>`;
+  }).join("");
 
-  // ── Row 2: Subtitle ──────────────────────────────────────────────────
-  applyStyle("A2", cellStyle({
-    font: { name: "Arial", sz: 9, color: { rgb: "AAAAAA" } },
-    fill: { patternType: "solid", fgColor: { rgb: "0F1923" } },
-    alignment: { horizontal: "left", vertical: "center", indent: 2 },
-    border: {},
-  }));
+  const html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:x="urn:schemas-microsoft-com:office:excel"
+          xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="UTF-8">
+      <!--[if gte mso 9]>
+      <xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+        <x:Name>Lead Database</x:Name>
+        <x:WorksheetOptions><x:DisplayGridlines><x:Value>False</x:Value></x:DisplayGridlines></x:WorksheetOptions>
+      </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
+      <![endif]-->
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 13px; }
+        table { border-collapse: collapse; width: 100%; }
+        td, th { font-family: Arial, sans-serif; }
+      </style>
+    </head>
+    <body>
+    <table>
+      <tr>
+        <td colspan="7" style="background:${darkBg};color:#FFFFFF;font-size:14px;font-weight:bold;padding:12px 16px;letter-spacing:0.02em">
+          FrontdeskReply &nbsp;&middot;&nbsp; Customer Lead Intelligence Report
+        </td>
+      </tr>
+      <tr>
+        <td colspan="7" style="background:${darkBg};color:#888888;font-size:10px;padding:4px 16px 10px">
+          Exported ${today} &nbsp;&middot;&nbsp; All time &nbsp;&middot;&nbsp; Confidential
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" style="background:${lightGray};text-align:center;padding:12px 8px;border:1px solid ${midGray};border-left:4px solid ${accent}">
+          <div style="font-size:22px;font-weight:700;color:#1A1F2E">${leads.length}</div>
+          <div style="font-size:9px;color:#6B7280;letter-spacing:0.05em;margin-top:2px">TOTAL LEADS</div>
+        </td>
+        <td colspan="2" style="background:${lightGray};text-align:center;padding:12px 8px;border:1px solid ${midGray};border-left:4px solid #10B981">
+          <div style="font-size:22px;font-weight:700;color:#1A1F2E">${emailCount}</div>
+          <div style="font-size:9px;color:#6B7280;letter-spacing:0.05em;margin-top:2px">HAVE EMAIL</div>
+        </td>
+        <td style="background:${lightGray};text-align:center;padding:12px 8px;border:1px solid ${midGray};border-left:4px solid #3B82F6">
+          <div style="font-size:22px;font-weight:700;color:#1A1F2E">${phoneCount}</div>
+          <div style="font-size:9px;color:#6B7280;letter-spacing:0.05em;margin-top:2px">HAVE PHONE</div>
+        </td>
+        <td colspan="2" style="background:${lightGray};text-align:center;padding:12px 8px;border:1px solid ${midGray};border-left:4px solid #8B5CF6">
+          <div style="font-size:22px;font-weight:700;color:#1A1F2E">${thisMonth}</div>
+          <div style="font-size:9px;color:#6B7280;letter-spacing:0.05em;margin-top:2px">NEW THIS MONTH</div>
+        </td>
+      </tr>
+      <tr><td colspan="7" style="padding:4px;background:#FFFFFF"></td></tr>
+      <tr style="background:${accent}">
+        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;width:40px">#</th>
+        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 12px;text-align:left;width:160px">CUSTOMER NAME</th>
+        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 12px;text-align:left;width:200px">EMAIL ADDRESS</th>
+        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 12px;text-align:left;width:130px">PHONE NUMBER</th>
+        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;width:110px">FIRST CONTACT</th>
+        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;width:110px">LAST CONTACT</th>
+        <th style="color:#FFFFFF;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;width:120px">PRIMARY INQUIRY</th>
+      </tr>
+      ${rows}
+      <tr>
+        <td colspan="7" style="background:${lightGray};color:#6B7280;font-size:10px;font-style:italic;padding:7px 12px;border-top:1px solid ${midGray}">
+          Showing ${leads.length} of ${leads.length} leads &nbsp;&middot;&nbsp; All time
+        </td>
+      </tr>
+    </table>
+    </body></html>`;
 
-  // ── Row 3: KPI cells ─────────────────────────────────────────────────
-  const kpiAccents = ["F97316", "10B981", "3B82F6", "8B5CF6"];
-  const kpiCols = ["A", "C", "E", "G"];
-  kpiCols.forEach((col, i) => {
-    applyStyle(`${col}3`, cellStyle({
-      font: { name: "Arial", sz: 10, bold: true, color: { rgb: "1A1F2E" } },
-      fill: { patternType: "solid", fgColor: { rgb: "F7F8FA" } },
-      alignment: { horizontal: "center", vertical: "center", wrapText: true },
-      border: {
-        left: { style: "medium", color: { rgb: kpiAccents[i] } },
-        right: { style: "thin", color: { rgb: "E2E5EA" } },
-        top: { style: "thin", color: { rgb: "E2E5EA" } },
-        bottom: { style: "thin", color: { rgb: "E2E5EA" } },
-      },
-    }));
-  });
-
-  // ── Row 4: Spacer ────────────────────────────────────────────────────
-  applyStyle("A4", cellStyle({
-    fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
-    border: {},
-  }));
-
-  // ── Row 5: Headers ───────────────────────────────────────────────────
-  ["A","B","C","D","E","F","G"].forEach(col => {
-    applyStyle(`${col}5`, cellStyle({
-      font: { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } },
-      fill: { patternType: "solid", fgColor: { rgb: "F97316" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      border: { bottom: { style: "thin", color: { rgb: "E2E5EA" } } },
-    }));
-  });
-
-  // ── Data rows ────────────────────────────────────────────────────────
-  leads.forEach((lead, i) => {
-    const row = i + 6;
-    const bg = i % 2 === 0 ? "FFFFFF" : "F7F8FA";
-    const cols = ["A","B","C","D","E","F","G"];
-
-    cols.forEach((col, ci) => {
-      const isInquiry = ci === 6;
-      const isNumber = ci === 0;
-      const isCentered = [0, 4, 5, 6].includes(ci);
-      const intentVal = lead.top_intent;
-
-      let ibg = bg;
-      let ifg = "1A1F2E";
-      let bold = false;
-
-      if (isInquiry) {
-        bold = true;
-        if (["faq", "general_inquiry", "inquiry"].includes(intentVal)) {
-          ibg = "E6F4EA"; ifg = "1E6E35";
-        } else if (["booking", "booking_request"].includes(intentVal)) {
-          ibg = "FFF7ED"; ifg = "C2410C";
-        } else if (["quote", "quote_request"].includes(intentVal)) {
-          ibg = "F5F3FF"; ifg = "6D28D9";
-        } else if (["emergency", "emergency_service"].includes(intentVal)) {
-          ibg = "FEF2F2"; ifg = "B91C1C";
-        } else {
-          ibg = "E8F0FE"; ifg = "1A56DB";
-        }
-      }
-
-      // Dim dashes
-      const cellVal = ws[`${col}${row}`]?.v;
-      if (cellVal === "—") ifg = "BBBBBB";
-
-      applyStyle(`${col}${row}`, cellStyle({
-        font: { name: "Arial", sz: isInquiry ? 9 : 10, bold, color: { rgb: ifg } },
-        fill: { patternType: "solid", fgColor: { rgb: ibg } },
-        alignment: {
-          horizontal: isCentered ? "center" : "left",
-          vertical: "center",
-          indent: isCentered ? 0 : 1,
-        },
-        border: { bottom: { style: "thin", color: { rgb: "E2E5EA" } } },
-      }));
-    });
-  });
-
-  // ── Footer ───────────────────────────────────────────────────────────
-  const footerRow = leads.length + 6;
-  applyStyle(`A${footerRow}`, cellStyle({
-    font: { name: "Arial", sz: 9, italic: true, color: { rgb: "4A5568" } },
-    fill: { patternType: "solid", fgColor: { rgb: "F7F8FA" } },
-    alignment: { horizontal: "left", vertical: "center", indent: 1 },
-    border: {},
-  }));
-
-  // ── Freeze panes & sheet options ─────────────────────────────────────
-  ws["!freeze"] = { xSplit: 0, ySplit: 5 };
-  ws["!sheetView"] = { showGridLines: false };
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Lead Database");
-
-  const filename = `${businessName.toLowerCase().replace(/\s+/g, "-")}-leads-${new Date().toISOString().slice(0, 10)}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${businessName.toLowerCase().replace(/\s+/g, "-")}-leads-${new Date().toISOString().slice(0, 10)}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 type SortField = "name" | "last_contact" | "first_contact" | "message_count";
@@ -359,7 +286,7 @@ export default function LeadDatabasePage() {
           </p>
         </div>
         <button
-          onClick={() => exportToXLSX(filtered, businessName)}
+          onClick={() => exportToXLS(filtered, businessName)}
           disabled={filtered.length === 0}
           style={{
             display: "flex", alignItems: "center", gap: 8,
