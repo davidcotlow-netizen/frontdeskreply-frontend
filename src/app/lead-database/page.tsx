@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
+import * as XLSX from "xlsx";
 
 const FALLBACK_BUSINESS_ID = "00000000-0000-0000-0000-000000000001";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -70,27 +71,202 @@ function timeAgo(iso: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-function exportToCSV(leads: Lead[], businessName: string) {
-  const headers = ["Name", "Email", "Phone", "First Contact", "Last Contact", "Messages", "Primary Inquiry"];
-  const rows = leads.map(l => [
-    l.name,
-    l.email || "",
-    l.phone || "",
-    formatDate(l.first_contact),
-    formatDate(l.last_contact),
-    String(l.message_count),
-    INTENT_LABELS[l.top_intent] || l.top_intent,
-  ]);
-  const csv = [headers, ...rows].map(row =>
-    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")
-  ).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${businessName.toLowerCase().replace(/\s+/g, "-")}-leads-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+function cellStyle(overrides: any = {}) {
+  return {
+    font: { name: "Arial", sz: 10, color: { rgb: "1A1F2E" }, ...overrides.font },
+    fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" }, ...overrides.fill },
+    alignment: { horizontal: "left", vertical: "center", ...overrides.alignment },
+    border: {
+      bottom: { style: "thin", color: { rgb: "E2E5EA" } },
+      ...overrides.border,
+    },
+    ...overrides,
+  };
+}
+
+function exportToXLSX(leads: Lead[], businessName: string) {
+  const today = new Date().toLocaleDateString("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+  });
+
+  const emailCount = leads.filter(l => l.email).length;
+  const phoneCount = leads.filter(l => l.phone).length;
+  const thisMonth = leads.filter(l => {
+    const d = new Date(l.first_contact);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
+  // Build array-of-arrays
+  const aoa: any[][] = [
+    [`FrontdeskReply  ·  Customer Lead Intelligence Report`],                    // Row 1
+    [`Exported ${today}  ·  All time  ·  Confidential`],                          // Row 2
+    [`${leads.length}\nTOTAL LEADS`, ``, `${emailCount}\nHAVE EMAIL`, ``, `${phoneCount}\nHAVE PHONE`, ``, `${thisMonth}\nNEW THIS MONTH`], // Row 3
+    [],                                                                            // Row 4 spacer
+    ["#", "Customer Name", "Email Address", "Phone Number", "First Contact", "Last Contact", "Primary Inquiry"], // Row 5
+    ...leads.map((l, i) => [
+      i + 1,
+      l.name,
+      l.email || "—",
+      l.phone || "—",
+      formatDate(l.first_contact),
+      formatDate(l.last_contact),
+      INTENT_LABELS[l.top_intent] || l.top_intent,
+    ]),
+    [`Showing ${leads.length} of ${leads.length} leads  ·  All time`],            // Footer
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Column widths
+  ws["!cols"] = [
+    { wch: 5 }, { wch: 22 }, { wch: 30 },
+    { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 18 },
+  ];
+
+  // Row heights
+  ws["!rows"] = [
+    { hpt: 36 }, // banner
+    { hpt: 20 }, // subtitle
+    { hpt: 44 }, // KPIs
+    { hpt: 8 },  // spacer
+    { hpt: 28 }, // headers
+    ...leads.map(() => ({ hpt: 26 })),
+    { hpt: 22 }, // footer
+  ];
+
+  // Merges
+  ws["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // banner
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }, // subtitle
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }, // KPI 1
+    { s: { r: 2, c: 2 }, e: { r: 2, c: 3 } }, // KPI 2
+    { s: { r: 2, c: 4 }, e: { r: 2, c: 5 } }, // KPI 3
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } }, // spacer
+    { s: { r: leads.length + 5, c: 0 }, e: { r: leads.length + 5, c: 6 } }, // footer
+  ];
+
+  // ── Helper to apply style to a cell ──────────────────────────────────
+  function applyStyle(cellRef: string, s: any, value?: any) {
+    if (!ws[cellRef]) ws[cellRef] = { v: value ?? "", t: "s" };
+    ws[cellRef].s = s;
+  }
+
+  // ── Row 1: Banner ────────────────────────────────────────────────────
+  applyStyle("A1", cellStyle({
+    font: { name: "Arial", sz: 13, bold: true, color: { rgb: "FFFFFF" } },
+    fill: { patternType: "solid", fgColor: { rgb: "0F1923" } },
+    alignment: { horizontal: "left", vertical: "center", indent: 2 },
+    border: {},
+  }));
+
+  // ── Row 2: Subtitle ──────────────────────────────────────────────────
+  applyStyle("A2", cellStyle({
+    font: { name: "Arial", sz: 9, color: { rgb: "AAAAAA" } },
+    fill: { patternType: "solid", fgColor: { rgb: "0F1923" } },
+    alignment: { horizontal: "left", vertical: "center", indent: 2 },
+    border: {},
+  }));
+
+  // ── Row 3: KPI cells ─────────────────────────────────────────────────
+  const kpiAccents = ["F97316", "10B981", "3B82F6", "8B5CF6"];
+  const kpiCols = ["A", "C", "E", "G"];
+  kpiCols.forEach((col, i) => {
+    applyStyle(`${col}3`, cellStyle({
+      font: { name: "Arial", sz: 10, bold: true, color: { rgb: "1A1F2E" } },
+      fill: { patternType: "solid", fgColor: { rgb: "F7F8FA" } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        left: { style: "medium", color: { rgb: kpiAccents[i] } },
+        right: { style: "thin", color: { rgb: "E2E5EA" } },
+        top: { style: "thin", color: { rgb: "E2E5EA" } },
+        bottom: { style: "thin", color: { rgb: "E2E5EA" } },
+      },
+    }));
+  });
+
+  // ── Row 4: Spacer ────────────────────────────────────────────────────
+  applyStyle("A4", cellStyle({
+    fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
+    border: {},
+  }));
+
+  // ── Row 5: Headers ───────────────────────────────────────────────────
+  ["A","B","C","D","E","F","G"].forEach(col => {
+    applyStyle(`${col}5`, cellStyle({
+      font: { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } },
+      fill: { patternType: "solid", fgColor: { rgb: "F97316" } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: { bottom: { style: "thin", color: { rgb: "E2E5EA" } } },
+    }));
+  });
+
+  // ── Data rows ────────────────────────────────────────────────────────
+  leads.forEach((lead, i) => {
+    const row = i + 6;
+    const bg = i % 2 === 0 ? "FFFFFF" : "F7F8FA";
+    const cols = ["A","B","C","D","E","F","G"];
+
+    cols.forEach((col, ci) => {
+      const isInquiry = ci === 6;
+      const isNumber = ci === 0;
+      const isCentered = [0, 4, 5, 6].includes(ci);
+      const intentVal = lead.top_intent;
+
+      let ibg = bg;
+      let ifg = "1A1F2E";
+      let bold = false;
+
+      if (isInquiry) {
+        bold = true;
+        if (["faq", "general_inquiry", "inquiry"].includes(intentVal)) {
+          ibg = "E6F4EA"; ifg = "1E6E35";
+        } else if (["booking", "booking_request"].includes(intentVal)) {
+          ibg = "FFF7ED"; ifg = "C2410C";
+        } else if (["quote", "quote_request"].includes(intentVal)) {
+          ibg = "F5F3FF"; ifg = "6D28D9";
+        } else if (["emergency", "emergency_service"].includes(intentVal)) {
+          ibg = "FEF2F2"; ifg = "B91C1C";
+        } else {
+          ibg = "E8F0FE"; ifg = "1A56DB";
+        }
+      }
+
+      // Dim dashes
+      const cellVal = ws[`${col}${row}`]?.v;
+      if (cellVal === "—") ifg = "BBBBBB";
+
+      applyStyle(`${col}${row}`, cellStyle({
+        font: { name: "Arial", sz: isInquiry ? 9 : 10, bold, color: { rgb: ifg } },
+        fill: { patternType: "solid", fgColor: { rgb: ibg } },
+        alignment: {
+          horizontal: isCentered ? "center" : "left",
+          vertical: "center",
+          indent: isCentered ? 0 : 1,
+        },
+        border: { bottom: { style: "thin", color: { rgb: "E2E5EA" } } },
+      }));
+    });
+  });
+
+  // ── Footer ───────────────────────────────────────────────────────────
+  const footerRow = leads.length + 6;
+  applyStyle(`A${footerRow}`, cellStyle({
+    font: { name: "Arial", sz: 9, italic: true, color: { rgb: "4A5568" } },
+    fill: { patternType: "solid", fgColor: { rgb: "F7F8FA" } },
+    alignment: { horizontal: "left", vertical: "center", indent: 1 },
+    border: {},
+  }));
+
+  // ── Freeze panes & sheet options ─────────────────────────────────────
+  ws["!freeze"] = { xSplit: 0, ySplit: 5 };
+  ws["!sheetView"] = { showGridLines: false };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Lead Database");
+
+  const filename = `${businessName.toLowerCase().replace(/\s+/g, "-")}-leads-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
 }
 
 type SortField = "name" | "last_contact" | "first_contact" | "message_count";
@@ -183,7 +359,7 @@ export default function LeadDatabasePage() {
           </p>
         </div>
         <button
-          onClick={() => exportToCSV(filtered, businessName)}
+          onClick={() => exportToXLSX(filtered, businessName)}
           disabled={filtered.length === 0}
           style={{
             display: "flex", alignItems: "center", gap: 8,
@@ -199,7 +375,7 @@ export default function LeadDatabasePage() {
             <path d="M8 1v9M4 7l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          Export CSV ({filtered.length})
+          Export Excel ({filtered.length})
         </button>
       </div>
 
