@@ -34,6 +34,16 @@ const navItems = [
         ),
       },
       {
+        href: "/sent-messages",
+        label: "Sent Messages",
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path d="M14 2L7 9" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M14 2L9.5 14L7 9L2 6.5L14 2Z" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        ),
+      },
+      {
         href: "/settings",
         label: "Settings",
         icon: (
