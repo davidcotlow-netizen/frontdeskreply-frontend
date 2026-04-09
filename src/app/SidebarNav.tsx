@@ -35,11 +35,11 @@ const navItems = [
       },
       {
         href: "/sent-messages",
-        label: "Sent Messages",
+        label: "Past Conversations",
         icon: (
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-            <path d="M14 2L7 9" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M14 2L9.5 14L7 9L2 6.5L14 2Z" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 2.5V4a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M5 7h6M5 9.5h3" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" opacity="0.5"/>
           </svg>
         ),
       },
