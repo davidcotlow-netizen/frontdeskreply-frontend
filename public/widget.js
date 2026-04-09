@@ -273,23 +273,6 @@
       30% { transform: translateY(-6px); }
     }
 
-    /* Escalate button */
-    .fdr-escalate {
-      align-self: center; margin: 4px 0;
-      padding: 8px 16px;
-      background: transparent;
-      color: ${CONFIG.color};
-      border: 1.5px solid ${CONFIG.color};
-      border-radius: 20px; font-size: 12px;
-      font-weight: 600; cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      animation: fdr-fadein 0.3s ease;
-    }
-    .fdr-escalate:hover {
-      background: ${CONFIG.color}; color: #fff;
-    }
-
     /* Input bar */
     .fdr-input-bar {
       display: flex; gap: 8px;
@@ -558,21 +541,6 @@
 
       case "ai_done":
         currentAiEl = null;
-        aiExchangeCount++;
-        // Show escalate button after 2+ exchanges
-        if (aiExchangeCount >= 2 && !messagesEl.querySelector(".fdr-escalate")) {
-          var escBtn = document.createElement("button");
-          escBtn.className = "fdr-escalate";
-          escBtn.textContent = "Talk to a real person";
-          escBtn.addEventListener("click", function () {
-            if (ws && ws.readyState === 1) {
-              ws.send(JSON.stringify({ type: "escalate_request" }));
-              escBtn.remove();
-            }
-          });
-          messagesEl.appendChild(escBtn);
-          scrollToBottom();
-        }
         break;
 
       case "human_message":
@@ -582,9 +550,6 @@
       case "human_takeover":
         addMessage(data.content, "system");
         headerStatus.textContent = "Chatting with a team member";
-        // Remove escalate button if present
-        var esc = messagesEl.querySelector(".fdr-escalate");
-        if (esc) esc.remove();
         break;
 
       case "human_handback":
@@ -624,9 +589,6 @@
     msgInput.value = "";
     msgInput.focus();
 
-    // Remove escalate button when visitor sends a new message
-    var esc = messagesEl.querySelector(".fdr-escalate");
-    if (esc) esc.remove();
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────────
