@@ -363,19 +363,20 @@ export default function AnalyticsPage() {
           {[...Array(5)].map((_, i) => <div key={i} style={{ flex: 1, minWidth: 140, height: 100, background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12 }} />)}
         </div>
       ) : (
-        <div style={{ display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-          <StatCard label="Total Leads" value={String(summary?.new_leads ?? 0)} sub={`${summary?.form_leads ?? 0} form + ${summary?.chat_conversations ?? 0} chat`} accent="#f97316" icon="📥" />
-          <StatCard label="Avg Response" value={formatSeconds(summary?.avg_first_response_seconds ?? null)} sub="industry avg: 4 min" accent="#10b981" icon="⚡" />
-          <StatCard label="Auto-Handled" value={`${autoRate}%`} sub={`${summary?.auto_handled_count ?? 0} total`} accent="#3b82f6" icon="🤖" />
-          <StatCard label="Urgent" value={String(summary?.urgent_count ?? 0)} sub="flagged for immediate action" accent="#ef4444" icon="🚨" />
-          <StatCard label="Bookings" value={String(summary?.booking_requests_captured ?? 0)} sub="booking requests detected" accent="#8b5cf6" icon="📅" />
-        </div>
-        {/* Live Chat stats row */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-          <StatCard label="Live Chats" value={String(summary?.chat_conversations ?? 0)} sub="chat conversations" accent="#E8714A" icon="💬" />
-          <StatCard label="Chat Messages" value={String(summary?.chat_messages ?? 0)} sub="total messages exchanged" accent="#06b6d4" icon="📝" />
-          <StatCard label="Chat Response" value={formatSeconds(summary?.chat_avg_response_seconds ?? null)} sub="avg AI reply time in chat" accent="#10b981" icon="⚡" />
-        </div>
+        <>
+          <div style={{ display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+            <StatCard label="Total Leads" value={String(summary?.new_leads ?? 0)} sub={`${summary?.form_leads ?? 0} form + ${summary?.chat_conversations ?? 0} chat`} accent="#f97316" icon="📥" />
+            <StatCard label="Avg Response" value={formatSeconds(summary?.avg_first_response_seconds ?? null)} sub="industry avg: 4 min" accent="#10b981" icon="⚡" />
+            <StatCard label="Auto-Handled" value={`${autoRate}%`} sub={`${summary?.auto_handled_count ?? 0} total`} accent="#3b82f6" icon="🤖" />
+            <StatCard label="Urgent" value={String(summary?.urgent_count ?? 0)} sub="flagged for immediate action" accent="#ef4444" icon="🚨" />
+            <StatCard label="Bookings" value={String(summary?.booking_requests_captured ?? 0)} sub="booking requests detected" accent="#8b5cf6" icon="📅" />
+          </div>
+          <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+            <StatCard label="Live Chats" value={String(summary?.chat_conversations ?? 0)} sub="chat conversations" accent="#E8714A" icon="💬" />
+            <StatCard label="Chat Messages" value={String(summary?.chat_messages ?? 0)} sub="total messages exchanged" accent="#06b6d4" icon="📝" />
+            <StatCard label="Chat Response" value={formatSeconds(summary?.chat_avg_response_seconds ?? null)} sub="avg AI reply time in chat" accent="#10b981" icon="⚡" />
+          </div>
+        </>
       )}
 
       {/* Charts Row */}
