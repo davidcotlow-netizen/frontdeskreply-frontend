@@ -209,7 +209,7 @@ export default function SettingsPage() {
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: "profile", label: "Business Profile", icon: "🏢" },
     { id: "faqs", label: "FAQ Knowledge Base", icon: "💬" },
-    { id: "automation", label: "Automation", icon: "⚡" },
+    { id: "automation", label: "Chatbot Settings", icon: "🤖" },
     { id: "notifications", label: "Notifications", icon: "🔔" },
   ];
 
@@ -255,41 +255,26 @@ export default function SettingsPage() {
           {tab === "profile" && (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-              <Section title="Business Info" subtitle="Basic details Claude uses when drafting replies">
+              <Section title="Business Info" subtitle="Your chatbot uses these details when responding to visitors">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                  <Field label="Business Name" value={profile.name} onChange={v => setProfile({ ...profile, name: v })} placeholder="Arctic Air HVAC" />
+                  <Field label="Business Name" value={profile.name} onChange={v => setProfile({ ...profile, name: v })} placeholder="Pawty Yoga" />
                   <Field label="Phone Number" value={profile.phone} onChange={v => setProfile({ ...profile, phone: v })} placeholder="(346) 410-6022" />
-                  <Field label="City / Service Area" value={profile.city} onChange={v => setProfile({ ...profile, city: v })} placeholder="Houston, TX" />
+                  <Field label="City / Location" value={profile.city} onChange={v => setProfile({ ...profile, city: v })} placeholder="Houston, TX" />
                   <Field label="Service Areas" value={profile.service_areas} onChange={v => setProfile({ ...profile, service_areas: v })} placeholder="Houston, Katy, Sugar Land" />
+                  <Field label="Owner Email" value={profile.owner_email} onChange={v => setProfile({ ...profile, owner_email: v })} placeholder="you@yourbusiness.com" />
                 </div>
               </Section>
 
-              <Section title="Reply-To Email" subtitle="When a customer replies to an email from FrontdeskReply, their reply is routed here">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                  <Field
-                    label="Owner / Reply-To Email"
-                    value={profile.owner_email}
-                    onChange={v => setProfile({ ...profile, owner_email: v })}
-                    placeholder="you@yourbusiness.com"
-                  />
-                  <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: "2px" }}>
-                    <div style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.6, padding: "8px 12px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)", borderRadius: "8px" }}>
-                      💡 Customer follow-up replies go directly to this inbox. Full two-way conversation threading coming in v2.0.
-                    </div>
-                  </div>
-                </div>
-              </Section>
-
-              <Section title="Hours & Availability" subtitle="Claude includes these when scheduling questions come in">
+              <Section title="Hours & Availability" subtitle="Your chatbot references these when visitors ask about scheduling">
                 <Field label="Business Hours" value={profile.hours} onChange={v => setProfile({ ...profile, hours: v })} placeholder="Mon–Fri 8am–6pm, Sat 9am–3pm" fullWidth />
               </Section>
 
-              <Section title="Emergency Policy" subtitle="How Claude handles after-hours emergencies">
-                <Field label="Emergency Policy" value={profile.emergency_policy} onChange={v => setProfile({ ...profile, emergency_policy: v })} placeholder="Call (346) 410-6022 for after-hours emergencies. On-call tech available 24/7." fullWidth textarea />
+              <Section title="After-Hours Message" subtitle="How your chatbot responds outside of business hours">
+                <Field label="After-Hours Policy" value={profile.emergency_policy} onChange={v => setProfile({ ...profile, emergency_policy: v })} placeholder="Thanks for reaching out! We're not available right now but we'd love to help. Call us at (346) 410-6022 for urgent matters." fullWidth textarea />
                 <Field label="Emergency Contact Phone" value={profile.emergency_contact_phone} onChange={v => setProfile({ ...profile, emergency_contact_phone: v })} placeholder="+17135550100" fullWidth />
               </Section>
 
-              <Section title="AI Response Tone" subtitle="How Claude sounds when writing replies for your business">
+              <Section title="Chatbot Tone" subtitle="How your AI chatbot sounds when talking to visitors">
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                   {["professional but warm", "friendly and casual", "formal and precise", "concise and direct"].map(t => (
                     <button key={t} onClick={() => setProfile({ ...profile, tone: t })} style={{
@@ -485,91 +470,46 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* ── AUTOMATION TAB ── */}
+          {/* ── CHATBOT SETTINGS TAB ── */}
           {tab === "automation" && (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              {currentPlan === "starter" && (
-                <div style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: "12px", padding: "16px 18px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
-                  <span style={{ fontSize: "20px" }}>🔒</span>
-                  <div>
-                    <div style={{ fontSize: "13.5px", fontWeight: "600", color: "var(--accent)", marginBottom: "3px" }}>Available on Growth & Pro plans</div>
-                    <div style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: 1.6 }}>
-                      Starter plan always requires manual approval in the queue. Upgrade to Growth or Pro to enable automatic responses.
-                    </div>
-                    <a href="/billing" style={{ display: "inline-block", marginTop: "10px", fontSize: "12.5px", fontWeight: "600", color: "var(--accent)", textDecoration: "none" }}>Upgrade your plan →</a>
-                  </div>
-                </div>
-              )}
 
-              <div style={{ background: "var(--bg-card)", border: autoRespond ? "1px solid rgba(16,185,129,0.3)" : "1px solid var(--border-subtle)", borderRadius: "14px", padding: "20px 22px", opacity: currentPlan === "starter" ? 0.5 : 1 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>
-                      Auto-Respond Without Approval
-                    </div>
-                    <div style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.7, marginBottom: "12px" }}>
-                      When enabled, FrontdeskReply will automatically send replies for low-risk messages like FAQs without requiring you to click Approve. You will still see all sent messages in your dashboard.
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: autoRespond ? "var(--green)" : "var(--text-muted)", transition: "background 0.2s" }} />
-                      <span style={{ fontSize: "12.5px", color: autoRespond ? "var(--green)" : "var(--text-muted)", fontWeight: "500" }}>
-                        {autoRespond ? "Auto-respond is ON — AI replies go out automatically" : "Auto-respond is OFF — all messages wait for your approval"}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => currentPlan !== "starter" && toggleAutoRespond()}
-                    disabled={currentPlan === "starter" || savingAutoRespond}
-                    style={{
-                      width: "52px", height: "30px", borderRadius: "15px", border: "none",
-                      cursor: currentPlan === "starter" ? "not-allowed" : "pointer",
-                      background: autoRespond ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.08)",
-                      position: "relative", transition: "background 0.2s", flexShrink: 0,
-                    }}
-                  >
-                    <div style={{
-                      width: "22px", height: "22px", borderRadius: "50%",
-                      background: autoRespond ? "var(--green)" : "var(--text-muted)",
-                      position: "absolute", top: "4px",
-                      left: autoRespond ? "26px" : "4px",
-                      transition: "left 0.2s, background 0.2s",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
-                    }} />
-                  </button>
+              <Section title="Widget Embed Code" subtitle="Add this one line to any website to enable your live chat widget">
+                <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "14px 16px", fontFamily: "'Geist Mono', monospace", fontSize: "12px", color: "var(--accent)", lineHeight: 1.7, wordBreak: "break-all" }}>
+                  {`<script src="https://app.frontdeskreply.com/widget.js" data-business-id="${businessId}" data-agent-name="${profile.name || 'Assistant'}" data-color="#E8714A"></script>`}
                 </div>
-              </div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
+                  Paste this before the closing <code style={{ color: "var(--text-secondary)" }}>&lt;/body&gt;</code> tag on your website. The chat widget will appear automatically.
+                </div>
+              </Section>
 
-              <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "14px", padding: "20px 22px" }}>
-                <div style={{ fontSize: "13.5px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "4px" }}>What gets auto-sent vs held for review</div>
-                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "16px" }}>These rules are hardcoded and cannot be changed — they protect your business.</div>
+              <Section title="How Your Chatbot Works" subtitle="Your AI chatbot handles all visitor conversations automatically">
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   {[
-                    { label: "FAQ answers", sub: "High-confidence replies to common questions", auto: true },
-                    { label: "General inquiries", sub: "Low-risk informational requests", auto: true },
-                    { label: "Booking & quote requests", sub: "Held so you can confirm availability and pricing", auto: false },
-                    { label: "Complaints", sub: "Always held — requires human judgment and tone", auto: false },
-                    { label: "Billing & payment questions", sub: "Always held — financial sensitivity", auto: false },
-                    { label: "Requests to speak to owner", sub: "Always held — explicit human request", auto: false },
-                    { label: "Emergencies", sub: "Always escalated immediately with SMS alert to you", auto: false },
-                    { label: "Low confidence messages", sub: "AI is unsure — always held for human review", auto: false },
+                    { icon: "💬", label: "Instant AI Responses", sub: "Visitors get replies in 2-3 seconds, 24/7 — no manual approval needed" },
+                    { icon: "📚", label: "FAQ-Powered Answers", sub: "Your chatbot uses the FAQ Knowledge Base above to answer questions accurately" },
+                    { icon: "📥", label: "Lead Capture", sub: "Every visitor provides their name, email, and optionally phone before chatting" },
+                    { icon: "🔄", label: "Continuous Learning", sub: "Add new FAQs based on common questions you see in Analytics to improve accuracy" },
+                    { icon: "📱", label: "Phone Fallback", sub: "When the AI isn't confident, it directs visitors to call your business number" },
                   ].map((item) => (
-                    <div key={item.label} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 14px", borderRadius: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)" }}>
+                    <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 14px", borderRadius: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)" }}>
+                      <span style={{ fontSize: "18px", flexShrink: 0 }}>{item.icon}</span>
                       <div>
                         <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)" }}>{item.label}</div>
-                        <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>{item.sub}</div>
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>{item.sub}</div>
                       </div>
-                      <span style={{
-                        flexShrink: 0, marginLeft: "16px", marginTop: "2px",
-                        fontSize: "11px", fontWeight: "600", letterSpacing: "0.05em", textTransform: "uppercase",
-                        padding: "3px 8px", borderRadius: "5px",
-                        background: item.auto ? "rgba(16,185,129,0.1)" : "rgba(249,115,22,0.08)",
-                        color: item.auto ? "var(--green)" : "var(--accent)",
-                        border: item.auto ? "1px solid rgba(16,185,129,0.2)" : "1px solid rgba(249,115,22,0.2)",
-                      }}>
-                        {item.auto ? "Auto-sends" : "Held for review"}
-                      </span>
                     </div>
                   ))}
+                </div>
+              </Section>
+
+              <div style={{ background: "var(--bg-card)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: "12px", padding: "16px 18px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                <span style={{ fontSize: "18px" }}>💡</span>
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)", marginBottom: "3px" }}>Pro tip: Keep your FAQs updated</div>
+                  <div style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                    Check the <a href="/analytics" style={{ color: "var(--accent)", textDecoration: "none" }}>Analytics</a> page to see what visitors are asking most. If a common question isn't in your FAQ list, add it to improve your chatbot's accuracy.
+                  </div>
                 </div>
               </div>
             </div>
@@ -578,19 +518,19 @@ export default function SettingsPage() {
           {/* ── NOTIFICATIONS TAB ── */}
           {tab === "notifications" && (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <Section title="Emergency Alerts" subtitle="How you get notified when Claude detects an emergency message">
-                <NotifRow label="SMS Alert" sub="Text message to your emergency contact phone" enabled={true} />
-                <NotifRow label="Dashboard Alert" sub="Visual alert in the approval queue" enabled={true} />
+              <Section title="Chat Activity" subtitle="Get notified when visitors use your chatbot">
+                <NotifRow label="New Conversation Alert" sub="Notification in your dashboard when a visitor starts a chat" enabled={true} />
+                <NotifRow label="Daily Chat Summary" sub="End-of-day recap of conversations and leads captured" enabled={false} />
               </Section>
-              <Section title="Queue Activity" subtitle="Notifications for new messages and queue updates">
-                <NotifRow label="New Lead Notification" sub="Alert when a new message arrives" enabled={true} />
-                <NotifRow label="Daily Summary" sub="End-of-day recap of leads and response stats" enabled={false} />
+              <Section title="Lead Alerts" subtitle="Stay on top of new leads from chat conversations">
+                <NotifRow label="New Lead Captured" sub="Alert when a visitor provides their contact information" enabled={true} />
+                <NotifRow label="Email Digest" sub="Weekly email summary of all leads and chat activity" enabled={false} />
               </Section>
               <div style={{ background: "var(--bg-card)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: "12px", padding: "16px 18px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
                 <span style={{ fontSize: "18px" }}>ℹ️</span>
                 <div>
-                  <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)", marginBottom: "3px" }}>Full notification controls coming soon</div>
-                  <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>Email digests, Slack integration, and custom alert rules are on the roadmap.</div>
+                  <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)", marginBottom: "3px" }}>More notification options coming soon</div>
+                  <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>SMS alerts, Slack integration, and custom notification rules are on the roadmap.</div>
                 </div>
               </div>
             </div>
