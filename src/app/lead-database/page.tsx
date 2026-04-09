@@ -240,6 +240,66 @@ export default function LeadDatabasePage() {
   const [loadingChats, setLoadingChats] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
+  // Selection + email
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === filtered.length) setSelected(new Set());
+    else setSelected(new Set(filtered.map(l => l.id)));
+  }
+
+  function getSelectedEmails(): string[] {
+    return filtered.filter(l => selected.has(l.id) && l.email).map(l => l.email!);
+  }
+
+  function copyEmails() {
+    const emails = getSelectedEmails();
+    if (!emails.length) return;
+    navigator.clipboard.writeText(emails.join(", "));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function sendBulkEmail() {
+    const emails = getSelectedEmails();
+    if (!emails.length || !emailSubject || !emailBody) return;
+    setSending(true);
+    setSendResult(null);
+    try {
+      const res = await fetch(`${API}/conversations/leads/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails, subject: emailSubject, message: emailBody, business_id: businessId }),
+      });
+      const data = await res.json();
+      setSendResult({ sent: data.sent || 0, failed: data.failed || 0 });
+      // Mark sent leads as "contacted"
+      for (const lead of filtered.filter(l => selected.has(l.id) && l.email)) {
+        updateLeadStatus(lead.id, "contacted");
+      }
+    } catch (e) {
+      setSendResult({ sent: 0, failed: getSelectedEmails().length });
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function updateLeadStatus(leadId: string, status: string) {
     setUpdatingStatus(leadId);
     try {
@@ -286,7 +346,9 @@ export default function LeadDatabasePage() {
         (l.email || "").toLowerCase().includes(q) ||
         (l.phone || "").includes(q);
       const matchIntent = filterIntent === "all" || l.top_intent === filterIntent;
-      return matchSearch && matchIntent;
+      const matchDateFrom = !dateFrom || l.first_contact >= dateFrom;
+      const matchDateTo = !dateTo || l.first_contact <= dateTo + "T23:59:59";
+      return matchSearch && matchIntent && matchDateFrom && matchDateTo;
     });
 
     result.sort((a, b) => {
@@ -301,7 +363,7 @@ export default function LeadDatabasePage() {
     });
 
     return result;
-  }, [leads, search, filterIntent, sortField, sortDir]);
+  }, [leads, search, filterIntent, sortField, sortDir, dateFrom, dateTo]);
 
   function toggleSort(field: SortField) {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -379,14 +441,14 @@ export default function LeadDatabasePage() {
       </div>
 
       {/* Search + filters */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
         <input
           type="text"
           placeholder="Search by name, email, or phone..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
-            flex: 1, minWidth: 220, padding: "9px 14px",
+            flex: 1, minWidth: 180, padding: "9px 14px",
             background: "var(--bg-card)", border: "1px solid var(--border-subtle)",
             borderRadius: 8, fontSize: 13, color: "var(--text-primary)",
             outline: "none", fontFamily: "inherit",
@@ -408,6 +470,81 @@ export default function LeadDatabasePage() {
           ))}
         </select>
       </div>
+
+      {/* Date range + actions */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>From:</span>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: "7px 10px", background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 7, fontSize: 12, color: "var(--text-primary)", outline: "none", fontFamily: "inherit" }} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>To:</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: "7px 10px", background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 7, fontSize: 12, color: "var(--text-primary)", outline: "none", fontFamily: "inherit" }} />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button onClick={() => { setDateFrom(""); setDateTo(""); }} style={{ fontSize: 11, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Clear dates</button>
+        )}
+
+        <div style={{ flex: 1 }} />
+
+        {selected.size > 0 && (
+          <>
+            <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>{selected.size} selected</span>
+            <button onClick={copyEmails} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: "pointer", background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
+              {copied ? "✓ Copied!" : `Copy ${getSelectedEmails().length} emails`}
+            </button>
+            <button onClick={() => { setShowEmailModal(true); setSendResult(null); setEmailSubject(""); setEmailBody(""); }} disabled={getSelectedEmails().length === 0} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer", background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", color: "#fff", opacity: getSelectedEmails().length === 0 ? 0.5 : 1 }}>
+              ✉️ Email {getSelectedEmails().length} leads
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Email compose modal */}
+      {showEmailModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => !sending && setShowEmailModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 14, padding: 24, width: 520, maxWidth: "90vw", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>Email {getSelectedEmails().length} Leads</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 18 }}>
+              Send a branded email via FrontdeskReply to your selected leads. Each lead receives an individual email.
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>To</label>
+              <div style={{ padding: "8px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-subtle)", borderRadius: 8, fontSize: 12, color: "var(--text-secondary)", maxHeight: 60, overflowY: "auto", lineHeight: 1.6 }}>
+                {getSelectedEmails().join(", ")}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>Subject</label>
+              <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="e.g. New sessions available — book your spot!" style={{ width: "100%", padding: "9px 12px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: 8, fontSize: 13, color: "var(--text-primary)", outline: "none", fontFamily: "inherit" }} />
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>Message</label>
+              <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} placeholder="Write your message here..." rows={6} style={{ width: "100%", padding: "9px 12px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: 8, fontSize: 13, color: "var(--text-primary)", outline: "none", fontFamily: "inherit", resize: "vertical" }} />
+            </div>
+
+            {sendResult && (
+              <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 14, background: sendResult.failed === 0 ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${sendResult.failed === 0 ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`, fontSize: 13, color: sendResult.failed === 0 ? "#10b981" : "#ef4444" }}>
+                {sendResult.failed === 0 ? `✅ Successfully sent to ${sendResult.sent} leads!` : `Sent ${sendResult.sent}, failed ${sendResult.failed}`}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setShowEmailModal(false)} disabled={sending} style={{ padding: "9px 18px", borderRadius: 8, fontSize: 13, color: "var(--text-secondary)", background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-subtle)", cursor: "pointer" }}>
+                {sendResult ? "Close" : "Cancel"}
+              </button>
+              {!sendResult && (
+                <button onClick={sendBulkEmail} disabled={sending || !emailSubject || !emailBody} style={{ padding: "9px 22px", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#fff", background: !emailSubject || !emailBody ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg, #f97316, #ea580c)", border: "none", cursor: !emailSubject || !emailBody ? "not-allowed" : "pointer", boxShadow: emailSubject && emailBody ? "0 2px 6px rgba(249,115,22,0.3)" : "none" }}>
+                  {sending ? "Sending..." : `Send to ${getSelectedEmails().length} leads`}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       {loading ? (
@@ -432,10 +569,13 @@ export default function LeadDatabasePage() {
       ) : (
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
           <div style={{
-            display: "grid", gridTemplateColumns: "2fr 2fr 1.2fr 1fr 1fr 1.2fr",
+            display: "grid", gridTemplateColumns: "32px 2fr 2fr 1.2fr 1fr 1fr 1.2fr",
             padding: "10px 18px", borderBottom: "1px solid var(--border-subtle)",
             background: "rgba(255,255,255,0.02)",
           }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0} onChange={toggleSelectAll} style={{ cursor: "pointer", accentColor: "var(--accent)" }} />
+            </div>
             {[
               { label: "Customer", field: "name" as SortField },
               { label: "Contact Info", field: null },
@@ -471,7 +611,7 @@ export default function LeadDatabasePage() {
                 <div
                   onClick={() => setExpanded(isOpen ? null : lead.id)}
                   style={{
-                    display: "grid", gridTemplateColumns: "2fr 2fr 1.2fr 1fr 1fr 1.2fr",
+                    display: "grid", gridTemplateColumns: "32px 2fr 2fr 1.2fr 1fr 1fr 1.2fr",
                     padding: "14px 18px", cursor: "pointer",
                     borderBottom: idx < filtered.length - 1 || isOpen ? "1px solid var(--border-subtle)" : "none",
                     background: isOpen ? "rgba(249,115,22,0.04)" : "transparent",
@@ -480,6 +620,9 @@ export default function LeadDatabasePage() {
                   onMouseEnter={e => { if (!isOpen) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.02)"; }}
                   onMouseLeave={e => { if (!isOpen) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
                 >
+                  <div style={{ display: "flex", alignItems: "center" }} onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" checked={selected.has(lead.id)} onChange={() => toggleSelect(lead.id)} style={{ cursor: "pointer", accentColor: "var(--accent)" }} />
+                  </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{
                       width: 32, height: 32, borderRadius: "50%", flexShrink: 0,

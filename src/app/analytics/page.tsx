@@ -129,30 +129,56 @@ export default function AnalyticsPage() {
 
   function exportAnalytics() {
     if (!summary) return;
-    const lines = [
-      "FrontdeskReply — Analytics Export",
-      `Period: ${period === "today" ? "Today" : period === "week" ? "This Week" : "This Month"}`,
-      `Exported: ${new Date().toLocaleDateString()}`,
-      "",
-      "KEY METRICS",
-      `Conversations: ${summary.total_conversations}`,
-      `Total Messages: ${summary.total_messages} (${summary.visitor_messages} visitor, ${summary.ai_messages} AI)`,
-      `Avg Chat Length: ${summary.avg_chat_length} messages`,
-      `Avg Response Time: ${formatSeconds(summary.avg_response_seconds)}`,
-      `Leads Captured: ${summary.leads_with_email} (${summary.leads_with_phone} with phone)`,
-      `Conversion Rate: ${summary.conversion_rate}%`,
-      "",
-      "TOP VISITOR QUESTIONS",
-      ...questions.map((q, i) => `${i + 1}. "${q.question}" (${q.count}x)`),
-      "",
-      "CONVERSATIONS BY DAY",
-      ...convByDay.map(d => `${d.date}: ${d.count} conversations`),
-    ];
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const periodLabel = period === "today" ? "Today" : period === "week" ? "This Week" : "This Month";
+
+    const questionRows = questions.map((q, i) =>
+      `<tr style="height:28px;background:${i % 2 === 0 ? "#FFFFFF" : "#F7F8FA"}">
+        <td style="font-size:12px;color:#9CA3AF;text-align:center;padding:0 8px;border-bottom:1px solid #E2E5EA">${i + 1}</td>
+        <td style="font-size:12px;color:#374151;padding:4px 12px;border-bottom:1px solid #E2E5EA">${q.question}</td>
+        <td style="font-size:12px;color:#374151;text-align:center;font-weight:600;padding:0 8px;border-bottom:1px solid #E2E5EA">${q.count}x</td>
+      </tr>`
+    ).join("");
+
+    const dayRows = convByDay.map((d, i) =>
+      `<tr style="height:28px;background:${i % 2 === 0 ? "#FFFFFF" : "#F7F8FA"}">
+        <td style="font-size:12px;color:#374151;padding:4px 12px;border-bottom:1px solid #E2E5EA">${d.date}</td>
+        <td style="font-size:12px;color:#374151;text-align:center;font-weight:600;padding:0 8px;border-bottom:1px solid #E2E5EA">${d.count}</td>
+      </tr>`
+    ).join("");
+
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><style>body,table,td,th{font-family:Arial,sans-serif}table{border-collapse:collapse}</style></head><body>
+<table style="width:700px">
+  <tr style="height:40px"><td colspan="3" style="background:#0F1923;color:#FFF;font-size:15px;font-weight:bold;padding:0 18px">FrontdeskReply &middot; Analytics Report</td></tr>
+  <tr style="height:22px"><td colspan="3" style="background:#0F1923;color:#6B7280;font-size:10px;padding:0 18px 6px">Period: ${periodLabel} &middot; Exported ${today}</td></tr>
+  <tr style="height:10px"><td colspan="3"></td></tr>
+  <tr style="height:56px">
+    <td style="background:#F7F8FA;border:1px solid #E2E5EA;border-left:4px solid #E8714A;text-align:center;padding:6px 14px"><div style="font-size:26px;font-weight:700;color:#111827">${summary.total_conversations}</div><div style="font-size:9px;font-weight:700;color:#9CA3AF;margin-top:4px">CONVERSATIONS</div></td>
+    <td style="background:#F7F8FA;border:1px solid #E2E5EA;border-left:4px solid #10B981;text-align:center;padding:6px 14px"><div style="font-size:26px;font-weight:700;color:#111827">${summary.total_messages}</div><div style="font-size:9px;font-weight:700;color:#9CA3AF;margin-top:4px">MESSAGES</div></td>
+    <td style="background:#F7F8FA;border:1px solid #E2E5EA;border-left:4px solid #3B82F6;text-align:center;padding:6px 14px"><div style="font-size:26px;font-weight:700;color:#111827">${formatSeconds(summary.avg_response_seconds)}</div><div style="font-size:9px;font-weight:700;color:#9CA3AF;margin-top:4px">AVG RESPONSE</div></td>
+  </tr>
+  <tr style="height:56px">
+    <td style="background:#F7F8FA;border:1px solid #E2E5EA;border-left:4px solid #8B5CF6;text-align:center;padding:6px 14px"><div style="font-size:26px;font-weight:700;color:#111827">${summary.leads_with_email}</div><div style="font-size:9px;font-weight:700;color:#9CA3AF;margin-top:4px">LEADS CAPTURED</div></td>
+    <td style="background:#F7F8FA;border:1px solid #E2E5EA;border-left:4px solid #06B6D4;text-align:center;padding:6px 14px"><div style="font-size:26px;font-weight:700;color:#111827">${summary.conversion_rate}%</div><div style="font-size:9px;font-weight:700;color:#9CA3AF;margin-top:4px">CONVERSION RATE</div></td>
+    <td style="background:#F7F8FA;border:1px solid #E2E5EA;border-left:4px solid #10B981;text-align:center;padding:6px 14px"><div style="font-size:26px;font-weight:700;color:#111827">${summary.avg_chat_length}</div><div style="font-size:9px;font-weight:700;color:#9CA3AF;margin-top:4px">AVG CHAT LENGTH</div></td>
+  </tr>
+  <tr style="height:16px"><td colspan="3"></td></tr>
+  <tr><td colspan="3" style="font-size:13px;font-weight:700;color:#111827;padding:8px 0">Top Visitor Questions</td></tr>
+  <tr style="height:28px;background:#F97316"><th style="color:#FFF;font-size:10px;font-weight:700;width:40px;padding:0 8px">#</th><th style="color:#FFF;font-size:10px;font-weight:700;text-align:left;padding:0 12px">QUESTION</th><th style="color:#FFF;font-size:10px;font-weight:700;width:60px;padding:0 8px">COUNT</th></tr>
+  ${questionRows}
+  <tr style="height:16px"><td colspan="3"></td></tr>
+  <tr><td colspan="3" style="font-size:13px;font-weight:700;color:#111827;padding:8px 0">Conversations by Day</td></tr>
+  <tr style="height:28px;background:#F97316"><th colspan="2" style="color:#FFF;font-size:10px;font-weight:700;text-align:left;padding:0 12px">DATE</th><th style="color:#FFF;font-size:10px;font-weight:700;width:80px;padding:0 8px">CONVERSATIONS</th></tr>
+  ${dayRows}
+  <tr style="height:28px"><td colspan="3" style="background:#F7F8FA;color:#9CA3AF;font-size:10px;font-style:italic;padding:0 14px;border-top:2px solid #E2E5EA">Generated by FrontdeskReply &middot; frontdeskreply.com</td></tr>
+</table></body></html>`;
+
+    const blob = new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `analytics-${period}-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `frontdeskreply-analytics-${period}-${new Date().toISOString().slice(0, 10)}.xls`;
     a.click();
     URL.revokeObjectURL(url);
   }
