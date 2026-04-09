@@ -16,7 +16,26 @@ interface Lead {
   message_count: number;
   top_intent: string;
   intents: string[];
+  source: string;
+  status: string;
+  chat_session_ids: string[];
 }
+
+interface ChatTranscript {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  message_count: number;
+  messages: { id: string; role: string; content: string; sent_at: string }[];
+}
+
+const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+  new: { bg: "rgba(59,130,246,0.1)", color: "#3b82f6", label: "New" },
+  contacted: { bg: "rgba(249,115,22,0.1)", color: "#f97316", label: "Contacted" },
+  quoted: { bg: "rgba(139,92,246,0.1)", color: "#8b5cf6", label: "Quoted" },
+  converted: { bg: "rgba(16,185,129,0.1)", color: "#10b981", label: "Converted" },
+};
 
 const INTENT_LABELS: Record<string, string> = {
   emergency: "Emergency",
@@ -217,6 +236,33 @@ export default function LeadDatabasePage() {
   const [sortField, setSortField] = useState<SortField>("last_contact");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [leadChats, setLeadChats] = useState<Record<string, ChatTranscript[]>>({});
+  const [loadingChats, setLoadingChats] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+
+  async function updateLeadStatus(leadId: string, status: string) {
+    setUpdatingStatus(leadId);
+    try {
+      await fetch(`${API}/conversations/leads/${leadId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      setLeads(leads.map(l => l.id === leadId ? { ...l, status } : l));
+    } catch (e) { console.error(e); }
+    finally { setUpdatingStatus(null); }
+  }
+
+  async function loadLeadChats(leadId: string) {
+    if (leadChats[leadId]) return; // already loaded
+    setLoadingChats(leadId);
+    try {
+      const res = await fetch(`${API}/conversations/leads/${leadId}/chats`);
+      const data = await res.json();
+      setLeadChats(prev => ({ ...prev, [leadId]: data.sessions || [] }));
+    } catch (e) { console.error(e); }
+    finally { setLoadingChats(null); }
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -479,36 +525,91 @@ export default function LeadDatabasePage() {
 
                 {isOpen && (
                   <div style={{
-                    padding: "16px 18px 18px 70px",
+                    padding: "16px 18px 18px 18px",
                     borderBottom: idx < filtered.length - 1 ? "1px solid var(--border-subtle)" : "none",
                     background: "rgba(249,115,22,0.03)",
-                    display: "flex", gap: 32, flexWrap: "wrap",
                   }}>
-                    {[
-                      { label: "Full Name", value: lead.name },
-                      { label: "Email", value: lead.email || "—" },
-                      { label: "Phone", value: lead.phone || "—" },
-                      { label: "First Contact", value: formatDate(lead.first_contact) },
-                      { label: "Last Contact", value: formatDate(lead.last_contact) },
-                      { label: "Total Messages", value: String(lead.message_count) },
-                    ].map(({ label, value }) => (
-                      <div key={label}>
-                        <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{label}</div>
-                        <div style={{ fontSize: 13, color: "var(--text-primary)" }}>{value}</div>
-                      </div>
-                    ))}
-                    {lead.intents.length > 1 && (
-                      <div>
-                        <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>All Inquiry Types</div>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {lead.intents.map(i => (
-                            <span key={i} style={{
-                              fontSize: 11, padding: "2px 8px", borderRadius: 5,
-                              background: `${INTENT_COLORS[i] || "#6b7280"}18`,
-                              color: INTENT_COLORS[i] || "#6b7280",
-                            }}>{INTENT_LABELS[i] || i}</span>
-                          ))}
+                    {/* Contact details row */}
+                    <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 16 }}>
+                      {[
+                        { label: "Full Name", value: lead.name },
+                        { label: "Email", value: lead.email || "—" },
+                        { label: "Phone", value: lead.phone || "—" },
+                        { label: "First Contact", value: formatDate(lead.first_contact) },
+                        { label: "Last Contact", value: formatDate(lead.last_contact) },
+                        { label: "Messages", value: String(lead.message_count) },
+                        { label: "Source", value: lead.source === "live_chat" ? "💬 Live Chat" : "📝 Form" },
+                      ].map(({ label, value }) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 13, color: "var(--text-primary)" }}>{value}</div>
                         </div>
+                      ))}
+                    </div>
+
+                    {/* Lifecycle status */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Lead Status</div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {(["new", "contacted", "quoted", "converted"] as const).map(s => {
+                          const sc = STATUS_COLORS[s];
+                          const isActive = lead.status === s;
+                          return (
+                            <button
+                              key={s}
+                              onClick={(e) => { e.stopPropagation(); updateLeadStatus(lead.id, s); }}
+                              disabled={updatingStatus === lead.id}
+                              style={{
+                                padding: "5px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                background: isActive ? sc.bg : "rgba(255,255,255,0.04)",
+                                border: isActive ? `1.5px solid ${sc.color}` : "1px solid var(--border-subtle)",
+                                color: isActive ? sc.color : "var(--text-muted)",
+                                transition: "all 0.15s",
+                              }}
+                            >{sc.label}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Chat transcripts */}
+                    {lead.email && (
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Chat History</div>
+                          {!leadChats[lead.id] && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); loadLeadChats(lead.id); }}
+                              style={{ fontSize: 11, color: "var(--accent)", background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 6, padding: "3px 10px", cursor: "pointer" }}
+                            >{loadingChats === lead.id ? "Loading..." : "Load chats"}</button>
+                          )}
+                        </div>
+                        {leadChats[lead.id] && leadChats[lead.id].length === 0 && (
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>No chat transcripts found for this lead.</div>
+                        )}
+                        {leadChats[lead.id] && leadChats[lead.id].map(session => (
+                          <div key={session.id} style={{ marginBottom: 10, background: "rgba(0,0,0,0.15)", borderRadius: 8, padding: 10, maxHeight: 250, overflowY: "auto" }}>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
+                              {new Date(session.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {session.message_count} messages
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              {session.messages.map(msg => (
+                                <div key={msg.id} style={{ display: "flex", justifyContent: msg.role === "visitor" ? "flex-end" : "flex-start" }}>
+                                  <div style={{
+                                    maxWidth: "75%", padding: "6px 10px", borderRadius: 10, fontSize: 12, lineHeight: 1.4,
+                                    ...(msg.role === "visitor" ? { background: "var(--accent)", color: "#fff", borderBottomRightRadius: 3 }
+                                      : { background: "var(--bg-card)", color: "var(--text-primary)", borderBottomLeftRadius: 3 }),
+                                  }}>
+                                    <div style={{ fontSize: 9, opacity: 0.5, marginBottom: 1 }}>
+                                      {msg.role === "visitor" ? lead.name : "Milo"} · {new Date(msg.sent_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                                    </div>
+                                    {msg.content}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

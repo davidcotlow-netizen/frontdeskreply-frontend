@@ -43,13 +43,20 @@
   var visitorPhone = "";
   var businessName = CONFIG.agentName;
 
-  // Restore session from localStorage
+  // Restore session from localStorage (expire after 24 hours)
   try {
     var saved = JSON.parse(localStorage.getItem("fdr_chat_" + CONFIG.businessId) || "{}");
-    sessionId = saved.sessionId || null;
-    visitorName = saved.visitorName || "";
-    visitorEmail = saved.visitorEmail || "";
-    visitorPhone = saved.visitorPhone || "";
+    var savedAt = saved.savedAt || 0;
+    var hoursSinceSave = (Date.now() - savedAt) / (1000 * 60 * 60);
+    if (hoursSinceSave < 24) {
+      sessionId = saved.sessionId || null;
+      visitorName = saved.visitorName || "";
+      visitorEmail = saved.visitorEmail || "";
+      visitorPhone = saved.visitorPhone || "";
+    } else {
+      // Session expired — clear it
+      localStorage.removeItem("fdr_chat_" + CONFIG.businessId);
+    }
   } catch (e) {}
 
   // ── Color utilities ───────────────────────────────────────────────────────
@@ -304,6 +311,17 @@
     .fdr-send-btn:hover { background: ${colorDk}; }
     .fdr-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* Reconnecting banner */
+    .fdr-reconnecting {
+      padding: 6px 12px;
+      background: rgba(245,158,11,0.15);
+      color: #f59e0b;
+      font-size: 11px;
+      text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      flex-shrink: 0;
+    }
+
     /* Powered by */
     .fdr-powered {
       text-align: center; padding: 6px;
@@ -344,7 +362,7 @@
     <div class="fdr-header">
       <div class="fdr-avatar">💬</div>
       <div class="fdr-header-info">
-        <div class="fdr-header-name">${escapeHtml(CONFIG.agentName)}</div>
+        <div class="fdr-header-name">Milo</div>
         <div class="fdr-header-status">We typically reply instantly</div>
       </div>
       <button class="fdr-close" aria-label="Close chat">✕</button>
@@ -357,6 +375,7 @@
       <input class="fdr-input" id="fdr-pre-phone" type="tel" placeholder="Phone number (optional)" autocomplete="tel" />
       <button class="fdr-start-btn" id="fdr-start-btn">Start Chat</button>
     </div>
+    <div class="fdr-reconnecting" id="fdr-reconnecting" style="display:none;">Reconnecting...</div>
     <div class="fdr-messages" id="fdr-messages" style="display:none;"></div>
     <div class="fdr-input-bar" id="fdr-input-bar" style="display:none;">
       <input type="text" id="fdr-msg-input" placeholder="Type a message..." autocomplete="off" />
@@ -380,6 +399,7 @@
   var msgInput = win.querySelector("#fdr-msg-input");
   var sendBtn = win.querySelector("#fdr-send-btn");
   var poweredBy = win.querySelector("#fdr-powered");
+  var reconnectBanner = win.querySelector("#fdr-reconnecting");
   var headerStatus = win.querySelector(".fdr-header-status");
   var headerName = win.querySelector(".fdr-header-name");
 
@@ -484,6 +504,7 @@
       isConnected = true;
       reconnectAttempts = 0;
       headerStatus.textContent = "Online";
+      reconnectBanner.style.display = "none";
 
       // Send init frame
       var init = {
@@ -527,6 +548,8 @@
     reconnectAttempts++;
     var delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
     headerStatus.textContent = "Reconnecting...";
+    reconnectBanner.style.display = "block";
+    reconnectBanner.textContent = "Connection lost. Reconnecting...";
     reconnectTimer = setTimeout(function () {
       reconnectTimer = null;
       connectWebSocket();
@@ -656,6 +679,7 @@
         visitorName: visitorName,
         visitorEmail: visitorEmail,
         visitorPhone: visitorPhone,
+        savedAt: Date.now(),
       }));
     } catch (e) {}
   }
@@ -706,6 +730,21 @@
         fbSendBtn.textContent = "Send Message";
       });
     });
+  }
+
+  // ── Proactive greeting — auto-open after 18 seconds ───────────────────────
+  // Only triggers if visitor hasn't opened the widget yet and has no existing session
+  if (!sessionId && !visitorName) {
+    setTimeout(function () {
+      if (!isOpen && !isConnected) {
+        // Gently pulse the button to draw attention
+        fab.style.animation = "fdr-pulse 1.5s ease 3";
+        // Add pulse keyframes if not already present
+        var pulseStyle = document.createElement("style");
+        pulseStyle.textContent = "@keyframes fdr-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }";
+        shadow.appendChild(pulseStyle);
+      }
+    }, 18000);
   }
 
 })();

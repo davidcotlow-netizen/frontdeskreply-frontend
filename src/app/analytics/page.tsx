@@ -18,6 +18,7 @@ interface Summary {
   active_now: number;
   leads_with_email: number;
   leads_with_phone: number;
+  conversion_rate: number;
 }
 
 interface DayData { date: string; count: number; }
@@ -126,6 +127,36 @@ export default function AnalyticsPage() {
     }).catch(console.error).finally(() => setLoading(false));
   }, [isLoaded, businessId, period]);
 
+  function exportAnalytics() {
+    if (!summary) return;
+    const lines = [
+      "FrontdeskReply — Analytics Export",
+      `Period: ${period === "today" ? "Today" : period === "week" ? "This Week" : "This Month"}`,
+      `Exported: ${new Date().toLocaleDateString()}`,
+      "",
+      "KEY METRICS",
+      `Conversations: ${summary.total_conversations}`,
+      `Total Messages: ${summary.total_messages} (${summary.visitor_messages} visitor, ${summary.ai_messages} AI)`,
+      `Avg Chat Length: ${summary.avg_chat_length} messages`,
+      `Avg Response Time: ${formatSeconds(summary.avg_response_seconds)}`,
+      `Leads Captured: ${summary.leads_with_email} (${summary.leads_with_phone} with phone)`,
+      `Conversion Rate: ${summary.conversion_rate}%`,
+      "",
+      "TOP VISITOR QUESTIONS",
+      ...questions.map((q, i) => `${i + 1}. "${q.question}" (${q.count}x)`),
+      "",
+      "CONVERSATIONS BY DAY",
+      ...convByDay.map(d => `${d.date}: ${d.count} conversations`),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `analytics-${period}-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const PERIODS: { key: Period; label: string }[] = [
     { key: "today", label: "Today" },
     { key: "week", label: "This Week" },
@@ -141,6 +172,16 @@ export default function AnalyticsPage() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.03em", margin: 0 }}>Analytics</h1>
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, marginBottom: 0 }}>Performance snapshot for your AI chatbot</p>
         </div>
+        <button
+          onClick={() => exportAnalytics()}
+          disabled={loading || !summary}
+          style={{
+            padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: summary ? "linear-gradient(135deg, #f97316, #ea580c)" : "rgba(255,255,255,0.04)",
+            border: "none", color: summary ? "#fff" : "var(--text-muted)",
+            boxShadow: summary ? "0 2px 6px rgba(249,115,22,0.3)" : "none",
+          }}
+        >Export Excel</button>
         <div style={{ display: "flex", gap: 4, background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: 4 }}>
           {PERIODS.map(p => (
             <button key={p.key} onClick={() => setPeriod(p.key)} style={{
@@ -165,7 +206,7 @@ export default function AnalyticsPage() {
           <StatCard label="Messages" value={summary?.total_messages ?? 0} sub={`${summary?.visitor_messages ?? 0} visitor · ${summary?.ai_messages ?? 0} AI`} color="#3b82f6" icon="📝" />
           <StatCard label="Avg Chat Length" value={summary?.avg_chat_length ? `${summary.avg_chat_length} msgs` : "—"} sub="messages per conversation" color="#10b981" icon="📊" />
           <StatCard label="AI Response Time" value={formatSeconds(summary?.avg_response_seconds ?? null)} sub="avg reply speed" color="#06b6d4" icon="⚡" />
-          <StatCard label="Leads Captured" value={summary?.leads_with_email ?? 0} sub={`${summary?.leads_with_phone ?? 0} with phone`} color="#8b5cf6" icon="📥" />
+          <StatCard label="Leads Captured" value={summary?.leads_with_email ?? 0} sub={`${summary?.conversion_rate ?? 0}% conversion rate`} color="#8b5cf6" icon="📥" />
         </div>
       )}
 

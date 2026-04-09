@@ -67,6 +67,7 @@ export default function PastConversationsPage() {
 
   const [period, setPeriod] = useState<Period>("month");
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "ended">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatConversation[]>([]);
@@ -83,12 +84,37 @@ export default function PastConversationsPage() {
 
   const filtered = chats.filter(c => {
     const q = search.toLowerCase();
-    if (!q) return true;
-    return c.visitor_name.toLowerCase().includes(q) ||
+    const matchSearch = !q ||
+      c.visitor_name.toLowerCase().includes(q) ||
       c.visitor_email.toLowerCase().includes(q) ||
       c.visitor_phone.includes(q) ||
       c.last_message_preview.toLowerCase().includes(q);
+    const matchStatus = filterStatus === "all" || c.status === filterStatus;
+    return matchSearch && matchStatus;
   });
+
+  function exportTranscript(chat: ChatConversation) {
+    const lines = [
+      `Chat Transcript — ${chat.visitor_name}`,
+      `Email: ${chat.visitor_email || "—"}  |  Phone: ${chat.visitor_phone || "—"}`,
+      `Started: ${formatDate(chat.started_at)}  |  Duration: ${duration(chat.started_at, chat.ended_at)}`,
+      `Messages: ${chat.message_count}`,
+      "—".repeat(50),
+      "",
+      ...chat.messages.map(m => {
+        const time = new Date(m.sent_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+        const label = m.role === "visitor" ? chat.visitor_name : m.role === "human" ? "You" : "Milo (AI)";
+        return `[${time}] ${label}: ${m.content}`;
+      }),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chat-${chat.visitor_name.replace(/\s+/g, "-").toLowerCase()}-${chat.started_at.slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const totalMessages = chats.reduce((sum, c) => sum + c.message_count, 0);
   const activeCount = chats.filter(c => c.status === "active").length;
@@ -135,20 +161,34 @@ export default function PastConversationsPage() {
         <SummaryCard label="Active Now" value={activeCount} color="#3b82f6" sub="live conversations" />
       </div>
 
-      {/* Search */}
-      <div style={{ marginBottom: 16 }}>
+      {/* Search + filter */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <input
           type="text"
           placeholder="Search by name, email, phone, or message content..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
-            width: "100%", padding: "9px 14px",
+            flex: 1, minWidth: 220, padding: "9px 14px",
             background: "var(--bg-card)", border: "1px solid var(--border-subtle)",
             borderRadius: 8, fontSize: 13, color: "var(--text-primary)",
             outline: "none", fontFamily: "inherit",
           }}
         />
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value as any)}
+          style={{
+            padding: "9px 12px", background: "var(--bg-card)",
+            border: "1px solid var(--border-subtle)", borderRadius: 8,
+            fontSize: 13, color: "var(--text-primary)", cursor: "pointer",
+            outline: "none", fontFamily: "inherit",
+          }}
+        >
+          <option value="all">All status</option>
+          <option value="active">Active</option>
+          <option value="ended">Ended</option>
+        </select>
       </div>
 
       {/* Conversation list */}
@@ -264,8 +304,15 @@ export default function PastConversationsPage() {
                     </div>
 
                     {/* Chat transcript */}
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                      Chat Transcript
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Chat Transcript
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); exportTranscript(chat); }} style={{
+                        fontSize: 11, color: "var(--accent)", background: "rgba(249,115,22,0.08)",
+                        border: "1px solid rgba(249,115,22,0.2)", borderRadius: 6,
+                        padding: "4px 10px", cursor: "pointer", fontWeight: 500,
+                      }}>Export .txt</button>
                     </div>
                     <div style={{
                       maxHeight: 400, overflowY: "auto",

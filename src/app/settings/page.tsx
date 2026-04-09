@@ -474,6 +474,44 @@ export default function SettingsPage() {
           {tab === "automation" && (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
+              <Section title="Chatbot Name & Greeting" subtitle="Customize how Milo introduces itself to visitors">
+                <div style={{ background: "rgba(232,113,74,0.06)", border: "1px solid rgba(232,113,74,0.15)", borderRadius: 10, padding: "14px 16px", display: "flex", gap: 12, alignItems: "center" }}>
+                  <span style={{ fontSize: 28 }}>🐾</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>Meet Milo</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                      Your AI chatbot is named <strong style={{ color: "var(--accent)" }}>Milo</strong>. When visitors open the chat, Milo introduces itself and uses your FAQ knowledge base to answer questions. If Milo can't answer confidently, it directs visitors to call your phone number.
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                  <strong>Default greeting:</strong> <em>"Hi [Name]! I'm Milo, your assistant at {profile.name || "your business"}. How can I help you today?"</em>
+                </div>
+              </Section>
+
+              <Section title="Test Your Chatbot" subtitle="Preview how Milo responds to visitors">
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <a
+                    href={`/test-chat?business_id=${businessId}`}
+                    target="_blank"
+                    rel="noopener"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      padding: "10px 18px", borderRadius: 8,
+                      background: "linear-gradient(135deg, #f97316, #ea580c)",
+                      color: "#fff", fontSize: 13, fontWeight: 600,
+                      textDecoration: "none", cursor: "pointer",
+                      boxShadow: "0 2px 8px rgba(249,115,22,0.3)",
+                    }}
+                  >
+                    💬 Open Test Chat
+                  </a>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    Opens a test page where you can chat with Milo using your FAQ data
+                  </span>
+                </div>
+              </Section>
+
               <Section title="Widget Embed Code" subtitle="Add this one line to any website to enable your live chat widget">
                 <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "14px 16px", fontFamily: "'Geist Mono', monospace", fontSize: "12px", color: "var(--accent)", lineHeight: 1.7, wordBreak: "break-all" }}>
                   {`<script src="https://app.frontdeskreply.com/widget.js" data-business-id="${businessId}" data-agent-name="${profile.name || 'Assistant'}" data-color="#E8714A"></script>`}

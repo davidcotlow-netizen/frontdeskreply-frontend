@@ -131,6 +131,17 @@ export default function DashboardPage() {
           {refreshing && (
             <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Syncing...</span>
           )}
+          {activeNow > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: "7px",
+              background: "rgba(232,113,74,0.1)",
+              border: "1px solid rgba(232,113,74,0.25)",
+              borderRadius: "8px", padding: "7px 12px",
+            }}>
+              <span style={{ fontSize: "16px" }}>💬</span>
+              <span style={{ fontSize: "12px", color: "#E8714A", fontWeight: "600" }}>{activeNow} live now</span>
+            </div>
+          )}
           <div style={{
             display: "flex", alignItems: "center", gap: "7px",
             background: "rgba(16,185,129,0.08)",
@@ -138,7 +149,7 @@ export default function DashboardPage() {
             borderRadius: "8px", padding: "7px 12px",
           }}>
             <div className="pulse-glow" style={{ width: "7px", height: "7px", background: "#10b981", borderRadius: "50%" }} />
-            <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "500", letterSpacing: "0.01em" }}>Chatbot Active</span>
+            <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "500", letterSpacing: "0.01em" }}>Milo Active</span>
           </div>
           <button
             onClick={() => load()}
