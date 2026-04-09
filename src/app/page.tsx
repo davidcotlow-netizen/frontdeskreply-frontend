@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
-import { getDashboardSummary, getQueue } from "@/lib/api";
 
 const FALLBACK_BUSINESS_ID = "00000000-0000-0000-0000-000000000001";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 function timeAgo(dateStr: string): string {
   if (!dateStr) return "";
@@ -15,22 +15,10 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function initials(name: string): string {
-  if (!name) return "?";
-  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-}
-
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1")
-    .replace(/__(.*?)__/g, "$1")
-    .replace(/`(.*?)`/g, "$1");
-}
-
-function formatResponseTime(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  return `${Math.round(seconds / 60)}m`;
+function formatSeconds(s: number | null): string {
+  if (s === null || s === undefined) return "—";
+  if (s < 60) return `${Math.round(s)}s`;
+  return `${Math.round(s / 60)}m ${Math.round(s % 60)}s`;
 }
 
 function getGreeting(): string {
@@ -60,26 +48,40 @@ function useCountUp(target: number, duration = 600): number {
   return count;
 }
 
+interface ChatConversation {
+  id: string;
+  visitor_name: string;
+  visitor_email: string;
+  visitor_phone: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  message_count: number;
+  last_message_preview: string;
+  messages: { id: string; role: string; content: string; sent_at: string }[];
+}
+
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
   const businessId = (user?.publicMetadata?.business_id as string) || FALLBACK_BUSINESS_ID;
 
   const [summary, setSummary] = useState<any>(null);
-  const [queue, setQueue] = useState<any[]>([]);
+  const [recentChats, setRecentChats] = useState<ChatConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [refreshing, setRefreshing] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   async function load(silent = false) {
     if (!isLoaded) return;
     if (!silent) setRefreshing(true);
     try {
-      const [s, q] = await Promise.all([
-        getDashboardSummary(businessId),
-        getQueue(businessId),
+      const [s, c] = await Promise.all([
+        fetch(`${API}/analytics/summary?business_id=${businessId}&period=today`).then(r => r.json()),
+        fetch(`${API}/conversations/chat-history?business_id=${businessId}&period=week`).then(r => r.json()),
       ]);
       setSummary(s);
-      setQueue((q as any).items || []);
+      setRecentChats((c.conversations || []).slice(0, 10));
       setLastRefresh(new Date());
     } catch (e) {
       console.error("Dashboard load error:", e);
@@ -96,17 +98,17 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [isLoaded, businessId]);
 
-  const urgentCount = queue.filter((i) => i.priority === "urgent").length;
-  const pendingCount = queue.length;
   const firstName = user?.firstName || "";
+  const chatCount = summary?.chat_conversations ?? 0;
+  const totalMessages = summary?.chat_messages ?? 0;
+  const avgLength = chatCount > 0 ? Math.round(totalMessages / chatCount) : 0;
+  const activeNow = recentChats.filter(c => c.status === "active").length;
 
   const statusMessage = loading
     ? "Loading your dashboard..."
-    : pendingCount === 0
-    ? "You're all caught up — no messages waiting."
-    : urgentCount > 0
-    ? `${urgentCount} urgent message${urgentCount > 1 ? "s" : ""} need your attention.`
-    : `${pendingCount} message${pendingCount > 1 ? "s" : ""} waiting for your review.`;
+    : chatCount === 0
+    ? "No conversations yet today — your chatbot is standing by."
+    : `${chatCount} conversation${chatCount > 1 ? "s" : ""} today with ${totalMessages} messages exchanged.`;
 
   return (
     <div style={{ padding: "32px 36px", maxWidth: "1100px" }}>
@@ -120,7 +122,7 @@ export default function DashboardPage() {
           <h1 style={{ fontSize: "26px", fontWeight: "600", color: "var(--text-primary)", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: "6px" }}>
             {getGreeting()}{firstName ? `, ${firstName}` : ""}
           </h1>
-          <p style={{ fontSize: "13.5px", color: urgentCount > 0 ? "#f87171" : "var(--text-secondary)", letterSpacing: "-0.01em" }}>
+          <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", letterSpacing: "-0.01em" }}>
             {statusMessage}
           </p>
         </div>
@@ -136,7 +138,7 @@ export default function DashboardPage() {
             borderRadius: "8px", padding: "7px 12px",
           }}>
             <div className="pulse-glow" style={{ width: "7px", height: "7px", background: "#10b981", borderRadius: "50%" }} />
-            <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "500", letterSpacing: "0.01em" }}>AI Active</span>
+            <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "500", letterSpacing: "0.01em" }}>Chatbot Active</span>
           </div>
           <button
             onClick={() => load()}
@@ -158,58 +160,177 @@ export default function DashboardPage() {
         <StatCard label="New Leads" value={loading ? null : (summary?.new_leads ?? 0)} sub="captured today" accent="orange" delay="fade-in-1"
           icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1a5 5 0 100 10A5 5 0 008 1zM3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z" fill="currentColor" opacity="0.7"/></svg>}
         />
-        <StatCard label="Avg Response"
-          value={loading ? null : (summary?.avg_first_response_seconds ? formatResponseTime(summary.avg_first_response_seconds) : "—")}
-          sub="vs 4 min industry avg" accent="green" delay="fade-in-2" isString
+        <StatCard label="Conversations" value={loading ? null : chatCount} sub="chat sessions today" accent="blue" delay="fade-in-2"
+          icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 2.5V4a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" opacity="0.7"/></svg>}
+        />
+        <StatCard label="Avg Chat Length"
+          value={loading ? null : (avgLength > 0 ? `${avgLength} msgs` : "—")}
+          sub="messages per conversation" accent="green" delay="fade-in-3" isString
+          icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5 7h6M5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.7"/><rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" opacity="0.7"/></svg>}
+        />
+        <StatCard label="AI Response Time"
+          value={loading ? null : formatSeconds(summary?.chat_avg_response_seconds ?? null)}
+          sub="avg reply speed" accent="green" delay="fade-in-4" isString
           icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" opacity="0.7"/><path d="M8 4.5V8l2.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.7"/></svg>}
-        />
-        <StatCard label="Auto-Handled" value={loading ? null : (summary?.auto_handled_count ?? 0)}
-          sub={summary?.new_leads > 0 ? `${Math.round((summary.auto_handled_count / summary.new_leads) * 100)}% automation` : "automation rate"}
-          accent="blue" delay="fade-in-3"
-          icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8a6 6 0 0111.3-2.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.7"/><path d="M14 8a6 6 0 01-11.3 2.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.7"/></svg>}
-        />
-        <StatCard label="Urgent Now" value={loading ? null : urgentCount}
-          sub={urgentCount > 0 ? "Needs immediate action" : "All clear"}
-          accent={urgentCount > 0 ? "red" : "orange"} delay="fade-in-4" urgent={urgentCount > 0}
-          icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1L1 13h14L8 1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" opacity="0.7"/><path d="M8 6v3.5M8 11.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.7"/></svg>}
         />
       </div>
 
-      {/* Queue */}
+      {/* Recent Conversations */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <h2 style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-muted)", letterSpacing: "0.07em", textTransform: "uppercase" }}>
-              Approval Queue
+              Recent Conversations
             </h2>
-            {queue.length > 0 && (
-              <span style={{ background: "var(--accent)", color: "#fff", fontSize: "11px", fontWeight: "700", padding: "2px 8px", borderRadius: "20px", lineHeight: 1.6 }}>
-                {queue.length}
+            {activeNow > 0 && (
+              <span style={{ background: "#10b981", color: "#fff", fontSize: "11px", fontWeight: "700", padding: "2px 8px", borderRadius: "20px", lineHeight: 1.6 }}>
+                {activeNow} active
               </span>
             )}
           </div>
-          <div style={{ fontSize: "11.5px", color: "var(--text-muted)", fontFamily: "'Geist Mono', monospace" }}>
-            Updated {timeAgo(lastRefresh.toISOString())} · auto-refresh 15s
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ fontSize: "11.5px", color: "var(--text-muted)", fontFamily: "'Geist Mono', monospace" }}>
+              Updated {timeAgo(lastRefresh.toISOString())} · auto-refresh 15s
+            </div>
+            <a href="/sent-messages" style={{ fontSize: "12px", color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>
+              View all →
+            </a>
           </div>
         </div>
 
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {[1, 2].map((i) => (
-              <div key={i} className="shimmer" style={{ height: "160px", borderRadius: "14px" }} />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="shimmer" style={{ height: "80px", borderRadius: "14px" }} />
             ))}
           </div>
-        ) : queue.length === 0 ? (
+        ) : recentChats.length === 0 ? (
           <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "14px", padding: "52px 24px", textAlign: "center" }}>
-            <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: "18px" }}>✓</div>
-            <div style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-secondary)", marginBottom: "4px" }}>Queue is empty — all caught up.</div>
-            <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>New messages will appear here automatically.</div>
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(232,113,74,0.1)", border: "1px solid rgba(232,113,74,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: "18px" }}>💬</div>
+            <div style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-secondary)", marginBottom: "4px" }}>No conversations yet this week</div>
+            <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>When visitors chat on your website, conversations will appear here.</div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {queue.map((item, idx) => (
-              <QueueCard key={item.id} item={item} onAction={load} index={idx} />
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {recentChats.map((chat) => {
+              const isOpen = expanded === chat.id;
+              const statusColor = chat.status === "active" ? "#10b981" : "#6b7280";
+              const contact = chat.visitor_email || chat.visitor_phone || "";
+
+              return (
+                <div key={chat.id} className="fade-in" style={{
+                  background: "var(--bg-card)", border: "1px solid var(--border-subtle)",
+                  borderRadius: 12, overflow: "hidden",
+                  borderLeft: `3px solid ${statusColor}`,
+                }}>
+                  <div
+                    onClick={() => setExpanded(isOpen ? null : chat.id)}
+                    style={{
+                      padding: "14px 18px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 14,
+                    }}
+                  >
+                    {/* Avatar */}
+                    <div style={{
+                      width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                      background: "rgba(249,115,22,0.12)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 13, fontWeight: 600, color: "var(--accent)",
+                    }}>
+                      {(chat.visitor_name || "V")[0].toUpperCase()}
+                    </div>
+
+                    {/* Name + contact */}
+                    <div style={{ flex: 1, minWidth: 120 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>
+                        {chat.visitor_name}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{contact}</div>
+                    </div>
+
+                    {/* Preview */}
+                    <div style={{ flex: 2, minWidth: 160 }}>
+                      <div style={{
+                        fontSize: 12.5, color: "var(--text-secondary)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 300,
+                      }}>
+                        {chat.last_message_preview || "No messages"}
+                      </div>
+                    </div>
+
+                    {/* Meta */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6,
+                        background: `${statusColor}18`, color: statusColor,
+                        border: `1px solid ${statusColor}30`,
+                      }}>
+                        {chat.status === "active" ? "Active" : "Ended"}
+                      </span>
+                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}>
+                        {chat.message_count} msgs
+                      </span>
+                      <span style={{ fontSize: 11.5, color: "var(--text-muted)", minWidth: 55, textAlign: "right" }}>
+                        {timeAgo(chat.started_at)}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
+                        {isOpen ? "▲" : "▼"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Expanded transcript */}
+                  {isOpen && (
+                    <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "14px 18px" }}>
+                      {/* Contact bar */}
+                      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 14, padding: "10px 14px", background: "rgba(249,115,22,0.05)", borderRadius: 8, border: "1px solid rgba(249,115,22,0.1)" }}>
+                        {[
+                          { label: "Name", value: chat.visitor_name },
+                          { label: "Email", value: chat.visitor_email || "—" },
+                          { label: "Phone", value: chat.visitor_phone || "—" },
+                          { label: "Started", value: new Date(chat.started_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) },
+                        ].map(({ label, value }) => (
+                          <div key={label}>
+                            <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{label}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--text-primary)", fontWeight: 500 }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Messages */}
+                      <div style={{
+                        maxHeight: 300, overflowY: "auto",
+                        display: "flex", flexDirection: "column", gap: 5,
+                        padding: "10px", background: "rgba(0,0,0,0.15)", borderRadius: 8,
+                      }}>
+                        {chat.messages.map(msg => (
+                          <div key={msg.id} style={{ display: "flex", justifyContent: msg.role === "visitor" ? "flex-end" : "flex-start" }}>
+                            <div style={{
+                              maxWidth: "75%", padding: "7px 11px", borderRadius: 10,
+                              fontSize: 12.5, lineHeight: 1.5,
+                              ...(msg.role === "visitor" ? {
+                                background: "var(--accent)", color: "#fff", borderBottomRightRadius: 3,
+                              } : msg.role === "human" ? {
+                                background: "rgba(16,185,129,0.15)", color: "var(--text-primary)", borderBottomLeftRadius: 3,
+                              } : {
+                                background: "var(--bg-card)", color: "var(--text-primary)", borderBottomLeftRadius: 3,
+                              }),
+                            }}>
+                              <div style={{ fontSize: 9.5, opacity: 0.55, marginBottom: 1 }}>
+                                {msg.role === "visitor" ? chat.visitor_name : msg.role === "human" ? "You" : "AI"}
+                                {" · "}
+                                {new Date(msg.sent_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                              </div>
+                              {msg.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -217,9 +338,11 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ label, value, sub, accent, delay, icon, isString, urgent }: {
+/* ── Stat Card ─────────────────────────────────────────────────── */
+
+function StatCard({ label, value, sub, accent, delay, icon, isString }: {
   label: string; value: any; sub?: string; accent: string; delay: string;
-  icon?: React.ReactNode; isString?: boolean; urgent?: boolean;
+  icon?: React.ReactNode; isString?: boolean;
 }) {
   const numValue = typeof value === "number" ? value : 0;
   const animated = useCountUp(!isString && value !== null ? numValue : 0, 700);
@@ -228,7 +351,7 @@ function StatCard({ label, value, sub, accent, delay, icon, isString, urgent }: 
   const accentDim = accent === "green" ? "var(--green-dim)" : accent === "blue" ? "var(--blue-dim)" : accent === "red" ? "var(--red-dim)" : "var(--accent-dim)";
 
   return (
-    <div className={`stat-card accent-${accent} ${delay}`} style={{ ...(urgent ? { borderColor: "rgba(239,68,68,0.3)" } : {}) }}>
+    <div className={`stat-card accent-${accent} ${delay}`}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
         <span style={{ fontSize: "11px", fontWeight: "600", color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</span>
         <span style={{ color: accentColor, background: accentDim, padding: "5px", borderRadius: "6px", display: "flex", alignItems: "center" }}>{icon}</span>
@@ -236,132 +359,7 @@ function StatCard({ label, value, sub, accent, delay, icon, isString, urgent }: 
       <div className="count-up" style={{ fontSize: "32px", fontWeight: "600", color: accentColor, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: "8px", fontFamily: "'DM Serif Display', Georgia, serif" }}>
         {displayValue}
       </div>
-      {sub && <div style={{ fontSize: "11.5px", color: urgent ? "rgba(239,68,68,0.7)" : "var(--text-muted)", letterSpacing: "-0.01em" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: "11.5px", color: "var(--text-muted)", letterSpacing: "-0.01em" }}>{sub}</div>}
     </div>
   );
-}
-
-function QueueCard({ item, onAction, index }: { item: any; onAction: () => void; index: number }) {
-  const message = item.inbound_messages;
-  const draft = item.response_drafts;
-  const [editing, setEditing] = useState(false);
-  const [editedBody, setEditedBody] = useState(stripMarkdown(draft?.draft_body || ""));
-  const [working, setWorking] = useState(false);
-  const [workingAction, setWorkingAction] = useState<string>("");
-  const isUrgent = item.priority === "urgent";
-  const name = message?.sender_name || "Unknown";
-  const intent = (message?.intent || "other") as string;
-  const confidence = message?.confidence;
-  const channel = message?.channel_type || "web_form";
-
-  const intentClass = intent === "emergency" ? "intent-emergency" : intent === "complaint" ? "intent-complaint" :
-    intent === "booking_request" ? "intent-booking" : intent === "quote_request" ? "intent-quote" :
-    intent === "faq" ? "intent-faq" : intent === "billing" ? "intent-billing" : "intent-other";
-
-  const avatarColor = intent === "emergency" ? { bg: "rgba(239,68,68,0.15)", text: "#f87171" } :
-    intent === "complaint" ? { bg: "rgba(245,158,11,0.15)", text: "#fbbf24" } :
-    intent.includes("booking") || intent.includes("quote") ? { bg: "rgba(59,130,246,0.15)", text: "#60a5fa" } :
-    { bg: "rgba(255,255,255,0.07)", text: "var(--text-secondary)" };
-
-  async function handleApprove() {
-    setWorking(true); setWorkingAction("approve");
-    try { const { approveQueueItem } = await import("@/lib/api"); await approveQueueItem(item.id, "staff"); onAction(); }
-    finally { setWorking(false); setWorkingAction(""); }
-  }
-  async function handleEditSend() {
-    setWorking(true); setWorkingAction("send");
-    try { const { editAndSendQueueItem } = await import("@/lib/api"); await editAndSendQueueItem(item.id, "staff", editedBody); onAction(); }
-    finally { setWorking(false); setWorkingAction(""); }
-  }
-  async function handleDismiss() {
-    setWorking(true); setWorkingAction("dismiss");
-    try { const { dismissQueueItem } = await import("@/lib/api"); await dismissQueueItem(item.id, "staff"); onAction(); }
-    finally { setWorking(false); setWorkingAction(""); }
-  }
-
-  const channelLabel = channel === "sms" ? "SMS" : channel === "email" ? "Email" : "Web Form";
-
-  return (
-    <div className={`queue-card ${intentClass} ${isUrgent ? "urgent-pulse" : ""} fade-in`} style={{ animationDelay: `${index * 0.06}s` }}>
-      <div style={{ padding: "18px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0, background: avatarColor.bg, color: avatarColor.text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "600" }}>
-              {initials(name)}
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-                <span style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{name}</span>
-                <IntentBadge intent={intent} />
-                {isUrgent && <span className="badge badge-urgent">Urgent</span>}
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>via {channelLabel}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {confidence && (
-              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-subtle)", borderRadius: "6px", padding: "3px 8px", fontSize: "11px", color: "var(--text-muted)", fontFamily: "'Geist Mono', monospace" }}>
-                {Math.round(confidence * 100)}% conf
-              </div>
-            )}
-            <span style={{ fontSize: "11.5px", color: "var(--text-muted)", fontFamily: "'Geist Mono', monospace" }}>
-              {timeAgo(item.queued_at || message?.received_at)}
-            </span>
-          </div>
-        </div>
-
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "12px 14px", marginBottom: "12px", marginLeft: "42px" }}>
-          <div style={{ fontSize: "10.5px", fontWeight: "600", color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "5px" }}>Customer message</div>
-          <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", lineHeight: 1.6, letterSpacing: "-0.01em" }}>"{message?.body}"</p>
-        </div>
-
-        <div className="draft-area" style={{ marginBottom: "14px", marginLeft: "42px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ width: "18px", height: "18px", borderRadius: "4px", background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1.5C3.5 1.5 1.5 3.5 1.5 6S3.5 10.5 6 10.5 10.5 8.5 10.5 6 8.5 1.5 6 1.5z" fill="rgba(59,130,246,0.8)"/><path d="M4.5 6l1 1 2-2" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
-              <span style={{ fontSize: "11px", fontWeight: "600", color: "#60a5fa", letterSpacing: "0.05em", textTransform: "uppercase" }}>AI Draft</span>
-            </div>
-            {!editing && <button onClick={() => setEditing(true)} style={{ fontSize: "11px", color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}>Edit draft</button>}
-          </div>
-          {editing ? (
-            <textarea style={{ width: "100%", background: "transparent", color: "var(--text-primary)", fontSize: "13.5px", lineHeight: 1.65, resize: "none", outline: "none", fontFamily: "inherit", border: "none" }}
-              rows={4} value={editedBody} onChange={(e) => setEditedBody(e.target.value)} autoFocus />
-          ) : (
-            <p style={{ fontSize: "13.5px", color: "var(--text-primary)", lineHeight: 1.65, letterSpacing: "-0.01em" }}>
-              {stripMarkdown(draft?.draft_body || "No draft generated.")}
-            </p>
-          )}
-        </div>
-
-        <div style={{ display: "flex", gap: "8px", marginLeft: "42px" }}>
-          {editing ? (
-            <>
-              <button className="btn-approve" onClick={handleEditSend} disabled={working}>
-                {workingAction === "send" ? "Sending..." : <><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6l3.5 3.5L11 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> Send Edited Reply</>}
-              </button>
-              <button className="btn-edit" onClick={() => { setEditing(false); setEditedBody(stripMarkdown(draft?.draft_body || "")); }}>Cancel</button>
-            </>
-          ) : (
-            <>
-              <button className="btn-approve" onClick={handleApprove} disabled={working}>
-                {workingAction === "approve" ? "Sending..." : <><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6l3.5 3.5L11 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> Approve & Send</>}
-              </button>
-              <button className="btn-dismiss" onClick={handleDismiss} disabled={working} title="Dismiss">
-                {workingAction === "dismiss" ? "..." : "✕"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function IntentBadge({ intent }: { intent: string }) {
-  const cls = intent === "emergency" ? "badge badge-emergency" : intent === "complaint" ? "badge badge-complaint" :
-    intent === "booking_request" ? "badge badge-booking" : intent === "quote_request" ? "badge badge-quote" :
-    intent === "faq" ? "badge badge-faq" : intent === "billing" ? "badge badge-billing" : "badge badge-other";
-  return <span className={cls}>{intent.replace(/_/g, " ")}</span>;
 }
