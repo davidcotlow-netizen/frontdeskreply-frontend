@@ -45,8 +45,6 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
   const [newFaq, setNewFaq] = useState<FAQ | null>(null);
-  const [autoRespond, setAutoRespond] = useState(false);
-  const [savingAutoRespond, setSavingAutoRespond] = useState(false);
   const [currentPlan, setCurrentPlan] = useState("starter");
 
   // Import feature state
@@ -59,12 +57,10 @@ export default function SettingsPage() {
     Promise.all([
       fetch(`${API}/settings/profile?business_id=${businessId}`).then(r => r.json()),
       fetch(`${API}/settings/faqs?business_id=${businessId}`).then(r => r.json()),
-      fetch(`${API}/settings/auto-respond?business_id=${businessId}`).then(r => r.json()),
       fetch(`${API}/billing/plan?business_id=${businessId}`).then(r => r.json()),
-    ]).then(([p, f, ar, plan]) => {
+    ]).then(([p, f, plan]) => {
       if (p && !p.detail) setProfile({ ...profile, ...p });
       if (f?.faqs) setFaqs(f.faqs);
-      if (ar) setAutoRespond(ar.auto_respond_enabled || false);
       if (plan) setCurrentPlan(plan.plan_tier || "starter");
     }).finally(() => setLoading(false));
   }, [isLoaded, businessId]);
@@ -81,21 +77,6 @@ export default function SettingsPage() {
       setTimeout(() => setSaved(false), 2500);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function toggleAutoRespond() {
-    setSavingAutoRespond(true);
-    const newVal = !autoRespond;
-    try {
-      await fetch(`${API}/settings/auto-respond?business_id=${businessId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ auto_respond_enabled: newVal }),
-      });
-      setAutoRespond(newVal);
-    } finally {
-      setSavingAutoRespond(false);
     }
   }
 

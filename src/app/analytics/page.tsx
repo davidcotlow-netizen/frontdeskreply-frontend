@@ -19,6 +19,7 @@ interface Summary {
   leads_with_email: number;
   leads_with_phone: number;
   conversion_rate: number;
+  accuracy_rate: number;
 }
 
 interface DayData { date: string; count: number; }
@@ -233,6 +234,7 @@ export default function AnalyticsPage() {
           <StatCard label="Avg Chat Length" value={summary?.avg_chat_length ? `${summary.avg_chat_length} msgs` : "—"} sub="messages per conversation" color="#10b981" icon="📊" />
           <StatCard label="AI Response Time" value={formatSeconds(summary?.avg_response_seconds ?? null)} sub="avg reply speed" color="#06b6d4" icon="⚡" />
           <StatCard label="Leads Captured" value={summary?.leads_with_email ?? 0} sub={`${summary?.conversion_rate ?? 0}% conversion rate`} color="#8b5cf6" icon="📥" />
+          <StatCard label="Milo Accuracy" value={`${summary?.accuracy_rate ?? 0}%`} sub="answered from FAQs vs redirected" color="#10b981" icon="🎯" />
         </div>
       )}
 

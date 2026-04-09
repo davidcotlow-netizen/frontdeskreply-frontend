@@ -250,6 +250,56 @@ export default function LeadDatabasePage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [copied, setCopied] = useState(false);
+  const [leadNotes, setLeadNotes] = useState<Record<string, { id: string; note: string; created_at: string }[]>>({});
+  const [newNote, setNewNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [loadingNotes, setLoadingNotes] = useState<string | null>(null);
+
+  const EMAIL_TEMPLATES = [
+    { name: "Follow-Up", subject: "Following up on your inquiry", body: "Hi there,\n\nThank you for reaching out to us! I wanted to follow up on your recent conversation and see if you had any additional questions.\n\nWe'd love to help you get started. Feel free to reply to this email or give us a call anytime.\n\nLooking forward to hearing from you!" },
+    { name: "New Sessions", subject: "New sessions available — book your spot!", body: "Hi there,\n\nGreat news! We have new sessions available and spots are filling up fast.\n\nHead over to our website to learn more and secure your spot. Don't miss out!\n\nSee you soon!" },
+    { name: "Thank You", subject: "Thank you for chatting with us!", body: "Hi there,\n\nThank you for taking the time to chat with us! We really appreciate your interest.\n\nIf you have any more questions, don't hesitate to reach out. We're always here to help.\n\nWarm regards!" },
+  ];
+
+  async function loadNotes(leadId: string) {
+    if (leadNotes[leadId]) return;
+    setLoadingNotes(leadId);
+    try {
+      const res = await fetch(`${API}/conversations/leads/${leadId}/notes`);
+      const data = await res.json();
+      setLeadNotes(prev => ({ ...prev, [leadId]: data.notes || [] }));
+    } catch (e) { console.error(e); }
+    finally { setLoadingNotes(null); }
+  }
+
+  async function saveNote(leadId: string) {
+    if (!newNote.trim()) return;
+    setSavingNote(true);
+    try {
+      await fetch(`${API}/conversations/leads/${leadId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: newNote.trim(), user_id: "owner" }),
+      });
+      setLeadNotes(prev => ({
+        ...prev,
+        [leadId]: [{ id: Date.now().toString(), note: newNote.trim(), created_at: new Date().toISOString() }, ...(prev[leadId] || [])],
+      }));
+      setNewNote("");
+    } catch (e) { console.error(e); }
+    finally { setSavingNote(false); }
+  }
+
+  function getLeadQuality(lead: Lead): { label: string; color: string; bg: string } {
+    // Hot: gave phone + email + multiple messages
+    if (lead.email && lead.phone && lead.message_count >= 4)
+      return { label: "Hot", color: "#ef4444", bg: "rgba(239,68,68,0.1)" };
+    // Warm: gave email + 2+ messages
+    if (lead.email && lead.message_count >= 2)
+      return { label: "Warm", color: "#f97316", bg: "rgba(249,115,22,0.1)" };
+    // Cold: single message or no email
+    return { label: "Cold", color: "#6b7280", bg: "rgba(107,114,128,0.1)" };
+  }
 
   function toggleSelect(id: string) {
     setSelected(prev => {
@@ -517,6 +567,15 @@ export default function LeadDatabasePage() {
             </div>
 
             <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>Quick Templates</label>
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                {EMAIL_TEMPLATES.map(t => (
+                  <button key={t.name} onClick={() => { setEmailSubject(t.subject); setEmailBody(t.body); }} style={{
+                    padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 500, cursor: "pointer",
+                    background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", color: "var(--accent)",
+                  }}>{t.name}</button>
+                ))}
+              </div>
               <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>Subject</label>
               <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="e.g. New sessions available — book your spot!" style={{ width: "100%", padding: "9px 12px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: 8, fontSize: 13, color: "var(--text-primary)", outline: "none", fontFamily: "inherit" }} />
             </div>
@@ -643,12 +702,15 @@ export default function LeadDatabasePage() {
                     {!lead.email && !lead.phone && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>No contact info</span>}
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{
                       fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 6,
                       background: `${intentColor}18`, color: intentColor,
                       border: `1px solid ${intentColor}30`,
                     }}>{intentLabel}</span>
+                    {(() => { const q = getLeadQuality(lead); return (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: q.bg, color: q.color, border: `1px solid ${q.color}30` }}>{q.label}</span>
+                    ); })()}
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center" }}>
@@ -715,6 +777,42 @@ export default function LeadDatabasePage() {
                       </div>
                     </div>
 
+                    {/* Internal Notes */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+                        Internal Notes
+                        {!leadNotes[lead.id] && (
+                          <button onClick={(e) => { e.stopPropagation(); loadNotes(lead.id); }} style={{ fontSize: 10, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", marginLeft: 8 }}>
+                            {loadingNotes === lead.id ? "Loading..." : "Load notes"}
+                          </button>
+                        )}
+                      </div>
+                      {leadNotes[lead.id] && (
+                        <>
+                          <div style={{ display: "flex", gap: 8, marginBottom: 8 }} onClick={e => e.stopPropagation()}>
+                            <input
+                              value={newNote} onChange={e => setNewNote(e.target.value)}
+                              placeholder="Add a note (e.g., Called Tuesday, following up Friday)..."
+                              onKeyDown={e => { if (e.key === "Enter") saveNote(lead.id); }}
+                              style={{ flex: 1, padding: "7px 10px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: 6, fontSize: 12, color: "var(--text-primary)", outline: "none", fontFamily: "inherit" }}
+                            />
+                            <button onClick={() => saveNote(lead.id)} disabled={savingNote || !newNote.trim()} style={{ padding: "7px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", background: newNote.trim() ? "var(--accent)" : "rgba(255,255,255,0.06)", color: newNote.trim() ? "#fff" : "var(--text-muted)", border: "none" }}>
+                              {savingNote ? "..." : "Save"}
+                            </button>
+                          </div>
+                          {leadNotes[lead.id].length === 0 && (
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>No notes yet. Add your first note above.</div>
+                          )}
+                          {leadNotes[lead.id].map(n => (
+                            <div key={n.id} style={{ padding: "8px 10px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.12)", borderRadius: 6, marginBottom: 4, fontSize: 12, color: "var(--text-secondary)" }}>
+                              <div style={{ marginBottom: 2 }}>{n.note}</div>
+                              <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{new Date(n.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+
                     {/* Chat transcripts */}
                     {lead.email && (
                       <div>
@@ -728,12 +826,12 @@ export default function LeadDatabasePage() {
                           )}
                         </div>
                         {leadChats[lead.id] && leadChats[lead.id].length === 0 && (
-                          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>No chat transcripts found for this lead.</div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>No chat transcripts found.</div>
                         )}
                         {leadChats[lead.id] && leadChats[lead.id].map(session => (
-                          <div key={session.id} style={{ marginBottom: 10, background: "rgba(0,0,0,0.15)", borderRadius: 8, padding: 10, maxHeight: 250, overflowY: "auto" }}>
+                          <div key={session.id} style={{ marginBottom: 10, background: "rgba(0,0,0,0.15)", borderRadius: 8, padding: 10, maxHeight: 200, overflowY: "auto" }}>
                             <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
-                              {new Date(session.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {session.message_count} messages
+                              {new Date(session.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {session.message_count} msgs
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                               {session.messages.map(msg => (

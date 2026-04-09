@@ -186,6 +186,70 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* ROI Banner */}
+      {!loading && chatCount > 0 && (
+        <div className="fade-in" style={{
+          background: "linear-gradient(135deg, rgba(232,113,74,0.08), rgba(16,185,129,0.08))",
+          border: "1px solid rgba(232,113,74,0.2)",
+          borderRadius: "12px", padding: "16px 22px", marginBottom: "24px",
+          display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span style={{ fontSize: "24px" }}>🐾</span>
+            <div>
+              <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)" }}>
+                Milo handled {totalMessages} messages today
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                That&apos;s roughly {Math.round(totalMessages * 2.5)} minutes of customer support handled automatically — saving you ~{Math.round(totalMessages * 2.5 / 60)} hours.
+              </div>
+            </div>
+          </div>
+          <a href="/analytics" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: "600", textDecoration: "none" }}>View analytics →</a>
+        </div>
+      )}
+
+      {/* Onboarding Checklist — only shows when no conversations exist */}
+      {!loading && recentChats.length === 0 && (
+        <div className="fade-in" style={{
+          background: "var(--bg-card)", border: "1px solid var(--border-subtle)",
+          borderRadius: "14px", padding: "24px", marginBottom: "24px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <span style={{ fontSize: "20px" }}>🚀</span>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)" }}>Get started with Milo</div>
+              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Complete these steps to start capturing leads automatically.</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[
+              { step: "1", label: "Set up your business profile", sub: "Name, phone, hours, and location", href: "/settings", icon: "🏢" },
+              { step: "2", label: "Add your FAQs", sub: "Common questions your customers ask", href: "/settings", icon: "💬" },
+              { step: "3", label: "Install the widget on your website", sub: "One line of code — find it in Chatbot Settings", href: "/settings", icon: "🔧" },
+              { step: "4", label: "Test your chatbot", sub: "Chat with Milo to make sure it answers correctly", href: "/test-chat", icon: "🐾" },
+            ].map(item => (
+              <a key={item.step} href={item.href} style={{
+                display: "flex", alignItems: "center", gap: "14px",
+                padding: "12px 16px", borderRadius: "10px",
+                background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)",
+                textDecoration: "none", transition: "background 0.15s", cursor: "pointer",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(249,115,22,0.06)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
+              >
+                <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(249,115,22,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", flexShrink: 0 }}>{item.icon}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)" }}>{item.label}</div>
+                  <div style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>{item.sub}</div>
+                </div>
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>→</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent Conversations */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
