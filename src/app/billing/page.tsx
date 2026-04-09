@@ -25,7 +25,7 @@ const PLANS = [
   {
     tier: "growth",
     name: "Growth",
-    price: "$249",
+    price: "$149",
     desc: "Most popular for growing businesses",
     limit: "Unlimited conversations",
     features: [
@@ -41,7 +41,7 @@ const PLANS = [
   {
     tier: "pro",
     name: "Pro",
-    price: "$399",
+    price: "$199",
     desc: "Full platform for teams & agencies",
     limit: "Unlimited conversations",
     features: [
