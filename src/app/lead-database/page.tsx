@@ -19,6 +19,8 @@ interface Lead {
   source: string;
   status: string;
   chat_session_ids: string[];
+  call_count: number;
+  call_session_ids: string[];
 }
 
 interface ChatTranscript {
