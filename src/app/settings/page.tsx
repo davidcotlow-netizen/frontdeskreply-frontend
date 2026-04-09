@@ -611,6 +611,48 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Voice AI Section — Pro Only */}
+              <Section title="Milo Voice AI" subtitle="Pro plan feature — Milo answers phone calls using your FAQs">
+                {currentPlan === "pro" ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "10px" }}>
+                      <span style={{ fontSize: "24px" }}>📞</span>
+                      <div>
+                        <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--green)" }}>Voice AI is active on your Pro plan</div>
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Milo answers phone calls with the same FAQs and personality as your chat widget.</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {[
+                        { icon: "📞", label: "Dedicated Twilio Number", sub: "Contact hello@frontdeskreply.com to configure your voice number" },
+                        { icon: "↪️", label: "Call Forwarding", sub: "Forward your existing business number to Milo when you're unavailable" },
+                        { icon: "📝", label: "Call Transcripts", sub: "Every call is transcribed and saved to Past Conversations" },
+                        { icon: "📥", label: "Caller Lead Capture", sub: "Callers are automatically added to your Lead Database by phone number" },
+                      ].map(item => (
+                        <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "10px 14px", borderRadius: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)" }}>
+                          <span style={{ fontSize: "16px", flexShrink: 0 }}>{item.icon}</span>
+                          <div>
+                            <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)" }}>{item.label}</div>
+                            <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>{item.sub}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <span style={{ fontSize: "32px", display: "block", marginBottom: "12px" }}>📞</span>
+                    <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Milo Voice AI — Pro Plan Feature</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                      Milo can answer phone calls using the same FAQs and personality as your chat widget. Callers get instant AI-powered answers 24/7. Call transcripts are saved to your dashboard.
+                    </div>
+                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                      Upgrade to Pro — $199/mo
+                    </a>
+                  </div>
+                )}
+              </Section>
             </div>
           )}
 

@@ -46,6 +46,7 @@ const PLANS = [
     limit: "Unlimited conversations",
     features: [
       "Everything in Growth",
+      "Milo Voice AI \u2014 answers phone calls",
       "Weekly email reports (automated)",
       "Custom chatbot branding",
       "Internal lead notes & CRM tools",
