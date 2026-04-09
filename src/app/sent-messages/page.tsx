@@ -65,20 +65,25 @@ export default function PastConversationsPage() {
   const { user } = useUser();
   const businessId = (user?.publicMetadata?.business_id as string) || FALLBACK_BUSINESS_ID;
 
+  const [tab, setTab] = useState<"chats" | "calls">("chats");
   const [period, setPeriod] = useState<Period>("month");
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "ended">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState<ChatConversation[]>([]);
+  const [calls, setCalls] = useState<any[]>([]);
 
   useEffect(() => {
     setLoading(true);
     setExpanded(null);
-    fetch(`${API}/conversations/chat-history?business_id=${businessId}&period=${period}`)
-      .then(r => r.json())
-      .then(d => setChats(d.conversations || []))
-      .catch(() => setChats([]))
+    Promise.all([
+      fetch(`${API}/conversations/chat-history?business_id=${businessId}&period=${period}`).then(r => r.json()),
+      fetch(`${API}/conversations/call-history?business_id=${businessId}&period=${period}`).then(r => r.json()),
+    ]).then(([c, cl]) => {
+      setChats(c.conversations || []);
+      setCalls(cl.calls || []);
+    }).catch(() => { setChats([]); setCalls([]); })
       .finally(() => setLoading(false));
   }, [businessId, period]);
 
@@ -156,7 +161,7 @@ export default function PastConversationsPage() {
             Past Conversations
           </h1>
           <p style={{ fontSize: 13.5, color: "var(--text-secondary)", marginTop: 6, marginBottom: 0 }}>
-            View all live chat conversations with your customers.
+            View all chat conversations and phone calls with your customers.
           </p>
         </div>
         <div style={{ display: "flex", gap: 4, background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: 4 }}>
@@ -172,11 +177,37 @@ export default function PastConversationsPage() {
         </div>
       </div>
 
+      {/* Tab toggle */}
+      <div style={{ display: "flex", gap: 4, background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: 4, marginBottom: 20, width: "fit-content" }}>
+        <button onClick={() => setTab("chats")} style={{
+          padding: "8px 20px", borderRadius: 7, border: "none", cursor: "pointer",
+          fontSize: 13, fontWeight: 600,
+          background: tab === "chats" ? "var(--accent)" : "transparent",
+          color: tab === "chats" ? "#fff" : "var(--text-muted)",
+        }}>💬 Live Chats ({chats.length})</button>
+        <button onClick={() => setTab("calls")} style={{
+          padding: "8px 20px", borderRadius: 7, border: "none", cursor: "pointer",
+          fontSize: 13, fontWeight: 600,
+          background: tab === "calls" ? "#8b5cf6" : "transparent",
+          color: tab === "calls" ? "#fff" : "var(--text-muted)",
+        }}>📞 Phone Calls ({calls.length})</button>
+      </div>
+
       {/* Summary cards */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
-        <SummaryCard label="Total Conversations" value={chats.length} color="var(--accent)" sub="chat sessions" />
-        <SummaryCard label="Total Messages" value={totalMessages} color="#10b981" sub="across all chats" />
-        <SummaryCard label="Active Now" value={activeCount} color="#3b82f6" sub="live conversations" />
+        {tab === "chats" ? (
+          <>
+            <SummaryCard label="Total Conversations" value={chats.length} color="var(--accent)" sub="chat sessions" />
+            <SummaryCard label="Total Messages" value={totalMessages} color="#10b981" sub="across all chats" />
+            <SummaryCard label="Active Now" value={activeCount} color="#3b82f6" sub="live conversations" />
+          </>
+        ) : (
+          <>
+            <SummaryCard label="Total Calls" value={calls.length} color="#8b5cf6" sub="phone calls" />
+            <SummaryCard label="Total Minutes" value={Math.round(calls.reduce((s: number, c: any) => s + (c.duration_seconds || 0), 0) / 60)} color="#10b981" sub="call minutes" />
+            <SummaryCard label="Avg Duration" value={calls.length > 0 ? Math.round(calls.reduce((s: number, c: any) => s + (c.duration_seconds || 0), 0) / calls.length) : 0} color="#3b82f6" sub="seconds per call" />
+          </>
+        )}
       </div>
 
       {/* Search + filter */}
@@ -209,8 +240,87 @@ export default function PastConversationsPage() {
         </select>
       </div>
 
-      {/* Conversation list */}
-      {loading ? (
+      {/* Phone Calls list */}
+      {tab === "calls" && !loading && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {calls.length === 0 ? (
+            <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "48px 24px", textAlign: "center" }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>📞</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 4 }}>No phone calls yet</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Phone calls will appear here when callers reach Milo Voice AI.</div>
+            </div>
+          ) : calls.map((call: any) => {
+            const isOpen = expanded === call.id;
+            return (
+              <div key={call.id} style={{
+                background: "var(--bg-card)", border: "1px solid var(--border-subtle)",
+                borderRadius: 12, overflow: "hidden", borderLeft: "3px solid #8b5cf6",
+              }}>
+                <div onClick={() => setExpanded(isOpen ? null : call.id)} style={{
+                  padding: "14px 18px", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
+                }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, background: "rgba(139,92,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>📞</div>
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>{call.caller_phone || "Unknown"}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{call.caller_name || "Caller"}</div>
+                  </div>
+                  <div style={{ flex: 2, minWidth: 200 }}>
+                    <div style={{ fontSize: 12.5, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 320 }}>
+                      {call.last_caller_message || "No transcript"}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, background: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>
+                      {call.duration_seconds ? `${Math.floor(call.duration_seconds / 60)}:${String(call.duration_seconds % 60).padStart(2, "0")}` : "0:00"}
+                    </span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}>{call.transcript_count || 0} msgs</span>
+                    <span style={{ fontSize: 11.5, color: "var(--text-muted)", minWidth: 60, textAlign: "right" }}>{timeAgo(call.started_at)}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>{isOpen ? "▲" : "▼"}</span>
+                  </div>
+                </div>
+                {isOpen && (
+                  <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "18px" }}>
+                    <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 18, padding: "12px 16px", background: "rgba(139,92,246,0.05)", borderRadius: 10, border: "1px solid rgba(139,92,246,0.12)" }}>
+                      {[
+                        { label: "Phone", value: call.caller_phone || "Unknown" },
+                        { label: "Name", value: call.caller_name || "Caller" },
+                        { label: "Started", value: formatDate(call.started_at) },
+                        { label: "Duration", value: call.duration_seconds ? `${Math.floor(call.duration_seconds / 60)}m ${call.duration_seconds % 60}s` : "N/A" },
+                        { label: "Messages", value: String(call.transcript_count || 0) },
+                      ].map(({ label, value }) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 10.5, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Call Transcript</div>
+                    <div style={{ maxHeight: 400, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, padding: "12px", background: "rgba(0,0,0,0.15)", borderRadius: 10 }}>
+                      {(call.transcripts || []).map((t: any, i: number) => (
+                        <div key={i} style={{ display: "flex", justifyContent: t.role === "caller" ? "flex-end" : "flex-start" }}>
+                          <div style={{
+                            maxWidth: "75%", padding: "8px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.5,
+                            ...(t.role === "caller" ? { background: "#8b5cf6", color: "#fff", borderBottomRightRadius: 4 } : { background: "var(--bg-card)", color: "var(--text-primary)", borderBottomLeftRadius: 4 }),
+                          }}>
+                            <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 2 }}>
+                              {t.role === "caller" ? "Caller" : "Milo"} · {new Date(t.timestamp).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            </div>
+                            {t.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Chat Conversation list */}
+      {tab === "chats" && loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {[...Array(5)].map((_, i) => (
             <div key={i} className="shimmer" style={{ height: 80, borderRadius: 12, background: "var(--bg-card)" }} />

@@ -290,15 +290,25 @@ export default function LeadDatabasePage() {
     finally { setSavingNote(false); }
   }
 
-  function getLeadQuality(lead: Lead): { label: string; color: string; bg: string } {
-    // Hot: gave phone + email + multiple messages
-    if (lead.email && lead.phone && lead.message_count >= 4)
+  function getLeadQuality(lead: any): { label: string; color: string; bg: string } {
+    const callCount = lead.call_count || 0;
+    // Hot: gave phone + email + multiple messages OR 2+ calls
+    if ((lead.email && lead.phone && lead.message_count >= 4) || callCount >= 2)
       return { label: "Hot", color: "#ef4444", bg: "rgba(239,68,68,0.1)" };
-    // Warm: gave email + 2+ messages
-    if (lead.email && lead.message_count >= 2)
+    // Warm: gave email + 2+ messages OR 1 call
+    if ((lead.email && lead.message_count >= 2) || callCount >= 1)
       return { label: "Warm", color: "#f97316", bg: "rgba(249,115,22,0.1)" };
     // Cold: single message or no email
     return { label: "Cold", color: "#6b7280", bg: "rgba(107,114,128,0.1)" };
+  }
+
+  function getSourceBadge(lead: any): string {
+    const src = lead.source || "unknown";
+    if (src === "multi") return "💬📞 Chat + Call";
+    if (src === "phone_call") return "📞 Phone Call";
+    if (src === "live_chat") return "💬 Live Chat";
+    if (src === "web_form") return "📝 Form";
+    return "Unknown";
   }
 
   function toggleSelect(id: string) {
@@ -713,9 +723,12 @@ export default function LeadDatabasePage() {
                     ); })()}
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>{lead.message_count}</span>
-                    <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>msg{lead.message_count !== 1 ? "s" : ""}</span>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>msgs</span>
+                    {(lead.call_count || 0) > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: "1px 6px", borderRadius: 4, background: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>📞 {lead.call_count}</span>
+                    )}
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center" }}>
@@ -743,7 +756,8 @@ export default function LeadDatabasePage() {
                         { label: "First Contact", value: formatDate(lead.first_contact) },
                         { label: "Last Contact", value: formatDate(lead.last_contact) },
                         { label: "Messages", value: String(lead.message_count) },
-                        { label: "Source", value: lead.source === "live_chat" ? "💬 Live Chat" : "📝 Form" },
+                        { label: "Source", value: getSourceBadge(lead) },
+                        { label: "Calls", value: `${lead.call_count || 0} phone calls` },
                       ].map(({ label, value }) => (
                         <div key={label}>
                           <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{label}</div>

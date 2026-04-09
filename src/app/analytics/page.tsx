@@ -20,6 +20,10 @@ interface Summary {
   leads_with_phone: number;
   conversion_rate: number;
   accuracy_rate: number;
+  total_calls: number;
+  total_call_minutes: number;
+  avg_call_duration_seconds: number;
+  active_calls: number;
 }
 
 interface DayData { date: string; count: number; }
@@ -107,6 +111,7 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>("week");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [convByDay, setConvByDay] = useState<DayData[]>([]);
+  const [callsByDay, setCallsByDay] = useState<DayData[]>([]);
   const [responseByDay, setResponseByDay] = useState<ResponseDay[]>([]);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,11 +123,13 @@ export default function AnalyticsPage() {
     Promise.all([
       fetch(`${API}/analytics/summary?business_id=${businessId}&period=${period}`).then(r => r.json()),
       fetch(`${API}/analytics/conversations-by-day?business_id=${businessId}&period=${period}`).then(r => r.json()),
+      fetch(`${API}/analytics/calls-by-day?business_id=${businessId}&period=${period}`).then(r => r.json()),
       fetch(`${API}/analytics/response-time-trend?business_id=${businessId}&period=${period}`).then(r => r.json()),
       fetch(`${API}/analytics/top-questions?business_id=${businessId}&period=${period}`).then(r => r.json()),
-    ]).then(([s, c, r, q]) => {
+    ]).then(([s, c, cb, r, q]) => {
       setSummary(s);
       setConvByDay(c.data || []);
+      setCallsByDay(cb.data || []);
       setResponseByDay(r.data || []);
       setQuestions(q.questions || []);
     }).catch(console.error).finally(() => setLoading(false));
@@ -235,6 +242,8 @@ export default function AnalyticsPage() {
           <StatCard label="AI Response Time" value={formatSeconds(summary?.avg_response_seconds ?? null)} sub="avg reply speed" color="#06b6d4" icon="⚡" />
           <StatCard label="Leads Captured" value={summary?.leads_with_email ?? 0} sub={`${summary?.conversion_rate ?? 0}% conversion rate`} color="#8b5cf6" icon="📥" />
           <StatCard label="Milo Accuracy" value={`${summary?.accuracy_rate ?? 0}%`} sub="answered from FAQs vs redirected" color="#10b981" icon="🎯" />
+          <StatCard label="Phone Calls" value={summary?.total_calls ?? 0} sub={`${summary?.total_call_minutes ?? 0} min total`} color="#8b5cf6" icon="📞" />
+          <StatCard label="Avg Call Duration" value={formatSeconds(summary?.avg_call_duration_seconds ?? null)} sub="per phone call" color="#8b5cf6" icon="⏱️" />
         </div>
       )}
 
@@ -244,7 +253,7 @@ export default function AnalyticsPage() {
         {/* Conversations by Day */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "20px" }}>
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>Conversations by Day</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>Chat Conversations by Day</div>
             <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 3 }}>Chat sessions started per day</div>
           </div>
           {loading ? (
@@ -266,6 +275,19 @@ export default function AnalyticsPage() {
             <ResponseTimeChart data={responseByDay} />
           )}
         </div>
+      </div>
+
+      {/* Calls by Day */}
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "20px", marginBottom: 16 }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>Phone Calls by Day</div>
+          <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 3 }}>Inbound calls per day</div>
+        </div>
+        {loading ? (
+          <div style={{ height: 160, background: "rgba(255,255,255,0.03)", borderRadius: 8 }} className="shimmer" />
+        ) : (
+          <BarChart data={callsByDay} color="#8b5cf6" label="call" />
+        )}
       </div>
 
       {/* Top Visitor Questions */}

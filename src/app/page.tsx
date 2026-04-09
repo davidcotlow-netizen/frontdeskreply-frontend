@@ -67,6 +67,7 @@ export default function DashboardPage() {
 
   const [summary, setSummary] = useState<any>(null);
   const [recentChats, setRecentChats] = useState<ChatConversation[]>([]);
+  const [recentCalls, setRecentCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [refreshing, setRefreshing] = useState(false);
@@ -76,12 +77,14 @@ export default function DashboardPage() {
     if (!isLoaded) return;
     if (!silent) setRefreshing(true);
     try {
-      const [s, c] = await Promise.all([
+      const [s, c, calls] = await Promise.all([
         fetch(`${API}/analytics/summary?business_id=${businessId}&period=today`).then(r => r.json()),
         fetch(`${API}/conversations/chat-history?business_id=${businessId}&period=week`).then(r => r.json()),
+        fetch(`${API}/conversations/call-history?business_id=${businessId}&period=week`).then(r => r.json()),
       ]);
       setSummary(s);
       setRecentChats((c.conversations || []).slice(0, 10));
+      setRecentCalls((calls.calls || []).slice(0, 5));
       setLastRefresh(new Date());
     } catch (e) {
       console.error("Dashboard load error:", e);
@@ -171,13 +174,11 @@ export default function DashboardPage() {
         <StatCard label="New Leads" value={loading ? null : (summary?.new_leads ?? 0)} sub="captured today" accent="orange" delay="fade-in-1"
           icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1a5 5 0 100 10A5 5 0 008 1zM3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z" fill="currentColor" opacity="0.7"/></svg>}
         />
-        <StatCard label="Conversations" value={loading ? null : chatCount} sub="chat sessions today" accent="blue" delay="fade-in-2"
+        <StatCard label="Chats" value={loading ? null : chatCount} sub="chat sessions today" accent="blue" delay="fade-in-2"
           icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 2.5V4a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" opacity="0.7"/></svg>}
         />
-        <StatCard label="Avg Chat Length"
-          value={loading ? null : (avgLength > 0 ? `${avgLength} msgs` : "—")}
-          sub="messages per conversation" accent="green" delay="fade-in-3" isString
-          icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5 7h6M5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.7"/><rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" opacity="0.7"/></svg>}
+        <StatCard label="Phone Calls" value={loading ? null : (summary?.total_calls ?? 0)} sub={`${summary?.total_call_minutes ?? 0} min today`} accent="green" delay="fade-in-3"
+          icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3.5 1.5h3l1.5 3-2 1.5a10 10 0 004.5 4.5l1.5-2 3 1.5v3a1 1 0 01-1 1C7 14 2 9 2 2.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" opacity="0.7"/></svg>}
         />
         <StatCard label="AI Response Time"
           value={loading ? null : formatSeconds(summary?.chat_avg_response_seconds ?? null)}
@@ -409,6 +410,63 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Recent Phone Calls */}
+      {!loading && recentCalls.length > 0 && (
+        <div style={{ marginTop: "32px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <h2 style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-muted)", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                Recent Phone Calls
+              </h2>
+              <span style={{ background: "#10b981", color: "#fff", fontSize: "11px", fontWeight: "700", padding: "2px 8px", borderRadius: "20px", lineHeight: 1.6 }}>
+                {recentCalls.length}
+              </span>
+            </div>
+            <a href="/sent-messages" style={{ fontSize: "12px", color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>View all →</a>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {recentCalls.map((call: any) => (
+              <div key={call.id} className="fade-in" style={{
+                background: "var(--bg-card)", border: "1px solid var(--border-subtle)",
+                borderRadius: 12, borderLeft: "3px solid #8b5cf6", padding: "14px 18px",
+                display: "flex", alignItems: "center", gap: 14,
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                  background: "rgba(139,92,246,0.12)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 16,
+                }}>📞</div>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>
+                    {call.caller_phone || "Unknown caller"}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {call.caller_name || "Caller"}
+                  </div>
+                </div>
+                <div style={{ flex: 2, minWidth: 160 }}>
+                  <div style={{ fontSize: 12.5, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 300 }}>
+                    {call.last_caller_message || "No transcript"}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(139,92,246,0.1)", color: "#8b5cf6", fontWeight: 600 }}>
+                    {call.duration_seconds ? `${Math.floor(call.duration_seconds / 60)}:${String(call.duration_seconds % 60).padStart(2, "0")}` : "0:00"}
+                  </span>
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(255,255,255,0.04)", color: "var(--text-muted)" }}>
+                    {call.transcript_count || 0} msgs
+                  </span>
+                  <span style={{ fontSize: 11.5, color: "var(--text-muted)", minWidth: 55, textAlign: "right" }}>
+                    {timeAgo(call.started_at)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
