@@ -40,6 +40,7 @@
   var reconnectTimer = null;
   var visitorName = "";
   var visitorEmail = "";
+  var visitorPhone = "";
   var businessName = CONFIG.agentName;
 
   // Restore session from localStorage
@@ -48,6 +49,7 @@
     sessionId = saved.sessionId || null;
     visitorName = saved.visitorName || "";
     visitorEmail = saved.visitorEmail || "";
+    visitorPhone = saved.visitorPhone || "";
   } catch (e) {}
 
   // ── Color utilities ───────────────────────────────────────────────────────
@@ -349,9 +351,10 @@
     </div>
     <div class="fdr-prechat" id="fdr-prechat">
       <h4>Start a conversation</h4>
-      <p>Enter your name to chat with us. We'll respond right away!</p>
-      <input class="fdr-input" id="fdr-pre-name" type="text" placeholder="Your name" autocomplete="name" />
-      <input class="fdr-input" id="fdr-pre-email" type="email" placeholder="Email (optional)" autocomplete="email" />
+      <p>Enter your info below and we'll respond right away!</p>
+      <input class="fdr-input" id="fdr-pre-name" type="text" placeholder="Your name *" autocomplete="name" />
+      <input class="fdr-input" id="fdr-pre-email" type="email" placeholder="Your email *" autocomplete="email" />
+      <input class="fdr-input" id="fdr-pre-phone" type="tel" placeholder="Phone number (optional)" autocomplete="tel" />
       <button class="fdr-start-btn" id="fdr-start-btn">Start Chat</button>
     </div>
     <div class="fdr-messages" id="fdr-messages" style="display:none;"></div>
@@ -370,6 +373,7 @@
   var prechat = win.querySelector("#fdr-prechat");
   var preNameInput = win.querySelector("#fdr-pre-name");
   var preEmailInput = win.querySelector("#fdr-pre-email");
+  var prePhoneInput = win.querySelector("#fdr-pre-phone");
   var startBtn = win.querySelector("#fdr-start-btn");
   var messagesEl = win.querySelector("#fdr-messages");
   var inputBar = win.querySelector("#fdr-input-bar");
@@ -390,6 +394,9 @@
     if (e.key === "Enter") startChat();
   });
   preEmailInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") startChat();
+  });
+  prePhoneInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") startChat();
   });
 
@@ -427,13 +434,28 @@
   // ── Start chat (from prechat form) ────────────────────────────────────────
   function startChat() {
     var name = preNameInput.value.trim();
+    var email = preEmailInput.value.trim();
+
+    // Reset border colors
+    preNameInput.style.borderColor = "#E8D8CE";
+    preEmailInput.style.borderColor = "#E8D8CE";
+
+    // Validate name (required)
     if (!name) {
       preNameInput.style.borderColor = "#e74c3c";
       preNameInput.focus();
       return;
     }
+    // Validate email (required)
+    if (!email || !email.includes("@")) {
+      preEmailInput.style.borderColor = "#e74c3c";
+      preEmailInput.focus();
+      return;
+    }
+
     visitorName = name;
-    visitorEmail = preEmailInput.value.trim();
+    visitorEmail = email;
+    visitorPhone = prePhoneInput.value.trim();
 
     // Save to localStorage
     saveState();
@@ -468,6 +490,7 @@
         type: "init",
         visitor_name: visitorName,
         visitor_email: visitorEmail || undefined,
+        visitor_phone: visitorPhone || undefined,
       };
       if (sessionId) init.session_id = sessionId;
       ws.send(JSON.stringify(init));
@@ -632,6 +655,7 @@
         sessionId: sessionId,
         visitorName: visitorName,
         visitorEmail: visitorEmail,
+        visitorPhone: visitorPhone,
       }));
     } catch (e) {}
   }
