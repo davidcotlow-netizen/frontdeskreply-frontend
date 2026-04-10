@@ -747,19 +747,90 @@
     });
   }
 
-  // ── Proactive greeting — auto-open after 18 seconds ───────────────────────
-  // Only triggers if visitor hasn't opened the widget yet and has no existing session
+  // ── Proactive Chat Triggers ────────────────────────────────────────────────
+  // Only triggers for new visitors (no existing session)
   if (!sessionId && !visitorName) {
-    setTimeout(function () {
-      if (!isOpen && !isConnected) {
-        // Gently pulse the button to draw attention
-        fab.style.animation = "fdr-pulse 1.5s ease 3";
-        // Add pulse keyframes if not already present
-        var pulseStyle = document.createElement("style");
-        pulseStyle.textContent = "@keyframes fdr-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }";
-        shadow.appendChild(pulseStyle);
+
+    // Add styles for proactive message bubble
+    var proStyle = document.createElement("style");
+    proStyle.textContent = [
+      "@keyframes fdr-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }",
+      "@keyframes fdr-slideIn { from { opacity:0; transform:translateY(10px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }",
+      ".fdr-proactive-msg {",
+      "  position:fixed; bottom:90px; " + (CONFIG.position === "left" ? "left:28px;" : "right:28px;"),
+      "  z-index:999997; max-width:260px; padding:12px 16px;",
+      "  background:#fff; color:#1C1C1C; border-radius:14px 14px 4px 14px;",
+      "  box-shadow:0 4px 20px rgba(0,0,0,0.15); font-size:13px; line-height:1.5;",
+      "  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;",
+      "  animation:fdr-slideIn 0.4s ease; cursor:pointer;",
+      "}",
+      ".fdr-proactive-msg .fdr-pro-close {",
+      "  position:absolute; top:4px; right:8px; font-size:14px; color:#aaa; cursor:pointer; background:none; border:none;",
+      "}",
+      ".fdr-proactive-msg .fdr-pro-name {",
+      "  font-size:11px; font-weight:600; color:" + CONFIG.color + "; margin-bottom:4px;",
+      "}",
+    ].join("\n");
+    shadow.appendChild(proStyle);
+
+    var proactiveFired = false;
+
+    function showProactiveMessage(message) {
+      if (proactiveFired || isOpen || isConnected) return;
+      proactiveFired = true;
+
+      // Pulse the button
+      fab.style.animation = "fdr-pulse 1.5s ease 3";
+
+      // Show floating message above the button
+      var bubble = document.createElement("div");
+      bubble.className = "fdr-proactive-msg";
+      bubble.innerHTML = '<div class="fdr-pro-name">' + escapeHtml(CONFIG.agentName) + '</div>' + escapeHtml(message) + '<button class="fdr-pro-close">&times;</button>';
+      shadow.appendChild(bubble);
+
+      // Click message → open chat
+      bubble.addEventListener("click", function(e) {
+        if (e.target.classList.contains("fdr-pro-close")) {
+          bubble.remove();
+          return;
+        }
+        bubble.remove();
+        toggleWidget();
+      });
+
+      // Auto-dismiss after 15 seconds
+      setTimeout(function() { if (bubble.parentNode) bubble.remove(); }, 15000);
+    }
+
+    // Trigger 1: Time on page (15 seconds)
+    setTimeout(function() {
+      var page = window.location.pathname.toLowerCase();
+      var msg = "Hi there! Looking for information? I can help!";
+
+      // Page-specific messages
+      if (page.includes("pricing") || page.includes("price") || page.includes("cost")) {
+        msg = "Have questions about pricing? I can help you find the right plan!";
+      } else if (page.includes("contact") || page.includes("book") || page.includes("schedule")) {
+        msg = "Ready to get started? I can answer any questions!";
+      } else if (page.includes("faq") || page.includes("help") || page.includes("support")) {
+        msg = "Need help finding an answer? Ask me anything!";
+      } else if (page.includes("about")) {
+        msg = "Want to learn more about us? I'm happy to help!";
       }
-    }, 18000);
+
+      showProactiveMessage(msg);
+    }, 15000);
+
+    // Trigger 2: Scroll depth (visitor scrolled 60% of page)
+    var scrollTriggered = false;
+    window.addEventListener("scroll", function() {
+      if (scrollTriggered || proactiveFired) return;
+      var scrollPct = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight;
+      if (scrollPct > 0.6) {
+        scrollTriggered = true;
+        showProactiveMessage("Seeing something interesting? I can answer any questions!");
+      }
+    });
   }
 
 })();

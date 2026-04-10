@@ -34,6 +34,7 @@ const PLANS = [
       "Email outreach to leads from dashboard",
       "Advanced analytics + Excel exports",
       "Email templates for follow-ups",
+      "Proactive chat triggers \u2014 auto-engage visitors",
       "Priority support",
     ],
     highlight: true,
