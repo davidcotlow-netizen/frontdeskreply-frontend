@@ -22,6 +22,9 @@ interface Client {
   call_minutes_used: number;
   call_minutes_limit: number;
   voice_number: string;
+  faq_count: number;
+  last_active: string | null;
+  created_at: string;
 }
 
 const PLAN_COLORS: Record<string, { bg: string; color: string }> = {
@@ -137,12 +140,12 @@ export default function AdminPage() {
       {/* Client table */}
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1.5fr",
+          display: "grid", gridTemplateColumns: "1.8fr 1.8fr 0.7fr 0.5fr 0.7fr 0.7fr 1.2fr 1fr",
           padding: "10px 18px", borderBottom: "1px solid var(--border-subtle)",
           background: "rgba(255,255,255,0.02)",
         }}>
-          {["Business", "Contact", "Plan", "Chats", "Calls", "Voice Minutes"].map(h => (
-            <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
+          {["Business", "Contact", "Plan", "FAQs", "Chats", "Calls", "Voice Min", "Last Active"].map(h => (
+            <div key={h} style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
           ))}
         </div>
 
@@ -157,53 +160,59 @@ export default function AdminPage() {
 
           return (
             <div key={client.id} style={{
-              display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1.5fr",
-              padding: "14px 18px", alignItems: "center",
+              display: "grid", gridTemplateColumns: "1.8fr 1.8fr 0.7fr 0.5fr 0.7fr 0.7fr 1.2fr 1fr",
+              padding: "12px 18px", alignItems: "center",
               borderBottom: idx < filtered.length - 1 ? "1px solid var(--border-subtle)" : "none",
             }}>
               {/* Business */}
               <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>{client.name}</div>
-                <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{client.city}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{client.name}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{client.city}</div>
+                {client.created_at && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>Since {new Date(client.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}</div>}
               </div>
 
               {/* Contact */}
               <div>
-                <div style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>{client.email || "—"}</div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{client.phone || "—"}</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{client.email || "—"}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{client.phone || "—"}</div>
               </div>
 
               {/* Plan */}
               <div>
                 <span style={{
-                  fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 6,
+                  fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 5,
                   background: planStyle.bg, color: planStyle.color,
                   textTransform: "capitalize",
                 }}>{client.plan}</span>
               </div>
 
+              {/* FAQs */}
+              <div style={{ fontSize: 13, fontWeight: 600, color: client.faq_count > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
+                {client.faq_count}
+              </div>
+
               {/* Chats */}
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
                 {client.chats_this_month}
               </div>
 
               {/* Calls */}
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
                 {client.calls_this_month}
               </div>
 
               {/* Voice Minutes */}
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: overLimit ? "#ef4444" : "var(--text-primary)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: overLimit ? "#ef4444" : "var(--text-primary)" }}>
                     {client.call_minutes_used}
                   </span>
                   {client.call_minutes_limit > 0 && (
-                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>/ {client.call_minutes_limit} min</span>
+                    <span style={{ fontSize: 10, color: "var(--text-muted)" }}>/ {client.call_minutes_limit}</span>
                   )}
                 </div>
                 {client.call_minutes_limit > 0 && (
-                  <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, marginTop: 4, width: "80%" }}>
+                  <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, marginTop: 3, width: "80%" }}>
                     <div style={{
                       height: "100%", borderRadius: 2, width: `${Math.min(usagePct, 100)}%`,
                       background: usagePct > 90 ? "#ef4444" : usagePct > 70 ? "#f59e0b" : "#10b981",
@@ -211,8 +220,13 @@ export default function AdminPage() {
                   </div>
                 )}
                 {client.voice_number && (
-                  <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginTop: 2 }}>{client.voice_number}</div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>{client.voice_number}</div>
                 )}
+              </div>
+
+              {/* Last Active */}
+              <div style={{ fontSize: 12, color: client.last_active ? "var(--text-secondary)" : "var(--text-muted)" }}>
+                {client.last_active ? new Date(client.last_active).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never"}
               </div>
             </div>
           );
