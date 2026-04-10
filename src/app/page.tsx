@@ -152,7 +152,7 @@ export default function DashboardPage() {
             borderRadius: "8px", padding: "7px 12px",
           }}>
             <div className="pulse-glow" style={{ width: "7px", height: "7px", background: "#10b981", borderRadius: "50%" }} />
-            <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "500", letterSpacing: "0.01em" }}>Milo Active</span>
+            <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "500", letterSpacing: "0.01em" }}>Vela Active</span>
           </div>
           <button
             onClick={() => load()}
@@ -199,7 +199,7 @@ export default function DashboardPage() {
             <span style={{ fontSize: "24px" }}>🐾</span>
             <div>
               <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)" }}>
-                Milo handled {totalMessages} messages today
+                Vela handled {totalMessages} messages today
               </div>
               <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
                 That&apos;s roughly {Math.round(totalMessages * 2.5)} minutes of customer support handled automatically — saving you ~{Math.round(totalMessages * 2.5 / 60)} hours.
@@ -219,7 +219,7 @@ export default function DashboardPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
             <span style={{ fontSize: "20px" }}>🚀</span>
             <div>
-              <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)" }}>Get started with Milo</div>
+              <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)" }}>Get started with Vela</div>
               <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Complete these steps to start capturing leads automatically.</div>
             </div>
           </div>
@@ -228,7 +228,7 @@ export default function DashboardPage() {
               { step: "1", label: "Set up your business profile", sub: "Name, phone, hours, and location", href: "/settings", icon: "🏢" },
               { step: "2", label: "Add your FAQs", sub: "Common questions your customers ask", href: "/settings", icon: "💬" },
               { step: "3", label: "Install the widget on your website", sub: "One line of code — find it in Chatbot Settings", href: "/settings", icon: "🔧" },
-              { step: "4", label: "Test your chatbot", sub: "Chat with Milo to make sure it answers correctly", href: "/test-chat", icon: "🐾" },
+              { step: "4", label: "Test your chatbot", sub: "Chat with Vela to make sure it answers correctly", href: "/test-chat", icon: "🐾" },
             ].map(item => (
               <a key={item.step} href={item.href} style={{
                 display: "flex", alignItems: "center", gap: "14px",

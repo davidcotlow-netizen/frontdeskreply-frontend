@@ -17,7 +17,7 @@ export default function TestChatPage() {
     const script = document.createElement("script");
     script.src = "/widget.js";
     script.setAttribute("data-business-id", businessId);
-    script.setAttribute("data-agent-name", "Milo");
+    script.setAttribute("data-agent-name", "Vela");
     script.setAttribute("data-color", "#E8714A");
     document.body.appendChild(script);
 
@@ -39,7 +39,7 @@ export default function TestChatPage() {
           Test Your Chatbot
         </h1>
         <p style={{ fontSize: 13.5, color: "var(--text-secondary)", margin: 0 }}>
-          The Milo chat widget is loaded on this page. Click the chat bubble in the bottom-right to test it with your FAQ data.
+          The Vela chat widget is loaded on this page. Click the chat bubble in the bottom-right to test it with your FAQ data.
         </p>
       </div>
 
@@ -51,7 +51,7 @@ export default function TestChatPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 24 }}>🐾</span>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Milo is ready</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Vela is ready</div>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Click the chat bubble to start a test conversation</div>
             </div>
           </div>
@@ -60,8 +60,8 @@ export default function TestChatPage() {
             <strong style={{ color: "var(--text-secondary)" }}>Tips for testing:</strong>
             <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
               <li>Ask questions that are in your FAQ list to verify accuracy</li>
-              <li>Ask something NOT in your FAQs to see how Milo handles it</li>
-              <li>Check that Milo directs to your phone number when unsure</li>
+              <li>Ask something NOT in your FAQs to see how Vela handles it</li>
+              <li>Check that Vela directs to your phone number when unsure</li>
               <li>Verify the greeting message and tone match your brand</li>
             </ul>
           </div>

@@ -443,7 +443,7 @@ export default function SettingsPage() {
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
                 <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-                  {faqs.length} FAQ{faqs.length !== 1 ? "s" : ""} · Milo uses these to auto-answer visitor questions
+                  {faqs.length} FAQ{faqs.length !== 1 ? "s" : ""} · Vela uses these to auto-answer visitor questions
                 </p>
                 <div style={{ display: "flex", gap: "6px" }}>
                   <button onClick={exportFaqs} disabled={faqs.length === 0} style={{
@@ -541,22 +541,22 @@ export default function SettingsPage() {
           {tab === "automation" && (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-              <Section title="Chatbot Name & Greeting" subtitle="Customize how Milo introduces itself to visitors">
+              <Section title="Chatbot Name & Greeting" subtitle="Customize how Vela introduces itself to visitors">
                 <div style={{ background: "rgba(232,113,74,0.06)", border: "1px solid rgba(232,113,74,0.15)", borderRadius: 10, padding: "14px 16px", display: "flex", gap: 12, alignItems: "center" }}>
                   <span style={{ fontSize: 28 }}>🐾</span>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>Meet Milo</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>Meet Vela</div>
                     <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                      Your AI chatbot is named <strong style={{ color: "var(--accent)" }}>Milo</strong>. When visitors open the chat, Milo introduces itself and uses your FAQ knowledge base to answer questions. If Milo can't answer confidently, it directs visitors to call your phone number.
+                      Your AI chatbot is named <strong style={{ color: "var(--accent)" }}>Vela</strong>. When visitors open the chat, Vela introduces itself and uses your FAQ knowledge base to answer questions. If Vela can't answer confidently, it directs visitors to call your phone number.
                     </div>
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                  <strong>Default greeting:</strong> <em>"Hi [Name]! I'm Milo, your assistant at {profile.name || "your business"}. How can I help you today?"</em>
+                  <strong>Default greeting:</strong> <em>"Hi [Name]! I'm Vela, your assistant at {profile.name || "your business"}. How can I help you today?"</em>
                 </div>
               </Section>
 
-              <Section title="Test Your Chatbot" subtitle="Preview how Milo responds to visitors">
+              <Section title="Test Your Chatbot" subtitle="Preview how Vela responds to visitors">
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   <a
                     href={`/test-chat?business_id=${businessId}`}
@@ -574,7 +574,7 @@ export default function SettingsPage() {
                     💬 Open Test Chat
                   </a>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    Opens a test page where you can chat with Milo using your FAQ data
+                    Opens a test page where you can chat with Vela using your FAQ data
                   </span>
                 </div>
               </Section>
@@ -619,14 +619,14 @@ export default function SettingsPage() {
               </div>
 
               {/* Voice AI Section */}
-              <Section title="Milo Voice AI" subtitle={voiceEnabled ? "Your AI receptionist is live and answering calls" : "Pro plan feature — Milo answers phone calls using your FAQs"}>
+              <Section title="Vela Voice AI" subtitle={voiceEnabled ? "Your AI receptionist is live and answering calls" : "Pro plan feature — Vela answers phone calls using your FAQs"}>
                 {currentPlan !== "pro" ? (
                   /* Not Pro — show upgrade prompt */
                   <div style={{ padding: "20px", textAlign: "center" }}>
                     <span style={{ fontSize: "32px", display: "block", marginBottom: "12px" }}>📞</span>
-                    <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Milo Voice AI — Pro Plan Feature</div>
+                    <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Vela Voice AI — Pro Plan Feature</div>
                     <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
-                      Milo can answer phone calls using the same FAQs and personality as your chat widget. Callers get instant AI-powered answers 24/7.
+                      Vela can answer phone calls using the same FAQs and personality as your chat widget. Callers get instant AI-powered answers 24/7.
                     </div>
                     <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
                       Upgrade to Pro — $199/mo
@@ -639,16 +639,16 @@ export default function SettingsPage() {
                       <span style={{ fontSize: "28px" }}>📞</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--green)" }}>Voice AI Active</div>
-                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Milo is answering calls at this number</div>
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Vela is answering calls at this number</div>
                       </div>
                       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "10px 16px" }}>
-                        <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "2px" }}>Your Milo Number</div>
+                        <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "2px" }}>Your Vela Number</div>
                         <div style={{ fontSize: "18px", fontWeight: "700", color: "var(--accent)", letterSpacing: "0.02em" }}>{voicePhone}</div>
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                       {[
-                        { icon: "📞", label: "Dedicated Voice Number", sub: `Milo answers all calls to ${voicePhone}` },
+                        { icon: "📞", label: "Dedicated Voice Number", sub: `Vela answers all calls to ${voicePhone}` },
                         { icon: "↪️", label: "Call Forwarding", sub: `Forward your main business number to ${voicePhone} when you're unavailable` },
                         { icon: "📝", label: "Call Transcripts", sub: "Every call is transcribed and saved to Past Conversations" },
                         { icon: "📥", label: "Caller Lead Capture", sub: "Callers are automatically added to your Lead Database" },
@@ -669,9 +669,9 @@ export default function SettingsPage() {
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", padding: "24px" }}>
                     <span style={{ fontSize: "40px" }}>📞</span>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "6px" }}>Enable Milo Voice AI</div>
+                      <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "6px" }}>Enable Vela Voice AI</div>
                       <div style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6, maxWidth: "400px" }}>
-                        Milo will answer phone calls using your FAQs. A dedicated phone number will be assigned automatically. 200 minutes/month included in your Pro plan.
+                        Vela will answer phone calls using your FAQs. A dedicated phone number will be assigned automatically. 200 minutes/month included in your Pro plan.
                       </div>
                     </div>
                     {provisionError && (

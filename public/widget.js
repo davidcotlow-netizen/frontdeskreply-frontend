@@ -362,7 +362,7 @@
     <div class="fdr-header">
       <div class="fdr-avatar">💬</div>
       <div class="fdr-header-info">
-        <div class="fdr-header-name">Milo</div>
+        <div class="fdr-header-name">Vela</div>
         <div class="fdr-header-status">We typically reply instantly</div>
       </div>
       <button class="fdr-close" aria-label="Close chat">✕</button>

@@ -101,7 +101,7 @@ export default function PastConversationsPage() {
   function exportTranscript(chat: ChatConversation) {
     const msgRows = chat.messages.map(m => {
       const time = new Date(m.sent_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      const label = m.role === "visitor" ? chat.visitor_name : m.role === "human" ? "You" : "Milo (AI)";
+      const label = m.role === "visitor" ? chat.visitor_name : m.role === "human" ? "You" : "Vela (AI)";
       const bg = m.role === "visitor" ? "#FFF7ED" : m.role === "human" ? "#E8F5E9" : "#F0F4FF";
       const color = m.role === "visitor" ? "#C2410C" : m.role === "human" ? "#1E6E35" : "#1A56DB";
       const align = m.role === "visitor" ? "right" : "left";
@@ -247,7 +247,7 @@ export default function PastConversationsPage() {
             <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "48px 24px", textAlign: "center" }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>📞</div>
               <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 4 }}>No phone calls yet</div>
-              <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Phone calls will appear here when callers reach Milo Voice AI.</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Phone calls will appear here when callers reach Vela Voice AI.</div>
             </div>
           ) : calls.map((call: any) => {
             const isOpen = expanded === call.id;
@@ -304,7 +304,7 @@ export default function PastConversationsPage() {
                             ...(t.role === "caller" ? { background: "#8b5cf6", color: "#fff", borderBottomRightRadius: 4 } : { background: "var(--bg-card)", color: "var(--text-primary)", borderBottomLeftRadius: 4 }),
                           }}>
                             <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 2 }}>
-                              {t.role === "caller" ? "Caller" : "Milo"} · {new Date(t.timestamp).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                              {t.role === "caller" ? "Caller" : "Vela"} · {new Date(t.timestamp).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                             </div>
                             {t.content}
                           </div>

@@ -858,7 +858,7 @@ export default function LeadDatabasePage() {
                                       : { background: "var(--bg-card)", color: "var(--text-primary)", borderBottomLeftRadius: 3 }),
                                   }}>
                                     <div style={{ fontSize: 9, opacity: 0.5, marginBottom: 1 }}>
-                                      {msg.role === "visitor" ? lead.name : "Milo"} · {new Date(msg.sent_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                                      {msg.role === "visitor" ? lead.name : "Vela"} · {new Date(msg.sent_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                                     </div>
                                     {msg.content}
                                   </div>
