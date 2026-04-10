@@ -1,6 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+
+const ADMIN_EMAILS = ["djcotlow1981@gmail.com", "david.cotlow@gmail.com"];
 
 const navItems = [
   {
@@ -80,6 +83,8 @@ const navItems = [
 
 export default function SidebarNav() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const isAdmin = ADMIN_EMAILS.includes(user?.primaryEmailAddress?.emailAddress || "");
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -150,6 +155,34 @@ export default function SidebarNav() {
           })}
         </div>
       ))}
+      {isAdmin && (
+        <div>
+          <div style={{
+            fontSize: "10px", fontWeight: "600", color: "var(--text-muted)",
+            letterSpacing: "0.08em", textTransform: "uppercase", padding: "12px 10px 4px",
+          }}>Admin</div>
+          <a
+            href="/admin"
+            style={{
+              display: "flex", alignItems: "center", gap: "9px",
+              padding: "8px 10px", borderRadius: "8px", fontSize: "13px",
+              fontWeight: isActive("/admin") ? "600" : "400",
+              color: isActive("/admin") ? "var(--text-primary)" : "var(--text-secondary)",
+              background: isActive("/admin") ? "rgba(139,92,246,0.1)" : "transparent",
+              borderLeft: isActive("/admin") ? "2px solid #8b5cf6" : "2px solid transparent",
+              textDecoration: "none", transition: "all 0.15s",
+            }}
+          >
+            <span style={{ color: isActive("/admin") ? "#8b5cf6" : "currentColor", display: "flex", flexShrink: 0 }}>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1a3 3 0 100 6 3 3 0 000-6zM2 13s-1 0-1-1 1-4 7-4 7 3 7 4-1 1-1 1H2z" fill="currentColor" opacity="0.7"/>
+                <path d="M12 1l1.5 3 3 .5-2.2 2 .5 3L12 8.5 9.2 9.5l.5-3L7.5 4.5l3-.5L12 1z" fill="currentColor" opacity="0.5"/>
+              </svg>
+            </span>
+            Admin Dashboard
+          </a>
+        </div>
+      )}
     </nav>
   );
 }
