@@ -29,6 +29,21 @@
     return;
   }
 
+  // ── Fetch branding config from API ────────────────────────────────────────
+  var brandingLoaded = false;
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "https://api.frontdeskreply.com/api/v1/settings/widget-config?business_id=" + CONFIG.businessId, false);
+    xhr.send();
+    if (xhr.status === 200) {
+      var branding = JSON.parse(xhr.responseText);
+      if (branding.chatbot_name) CONFIG.agentName = branding.chatbot_name;
+      if (branding.brand_color) CONFIG.color = branding.brand_color;
+      if (branding.show_powered_by === false) CONFIG.hidePoweredBy = true;
+      brandingLoaded = true;
+    }
+  } catch (e) {}
+
   // ── State ─────────────────────────────────────────────────────────────────
   var ws = null;
   var sessionId = null;
@@ -362,7 +377,7 @@
     <div class="fdr-header">
       <div class="fdr-avatar">💬</div>
       <div class="fdr-header-info">
-        <div class="fdr-header-name">Vela</div>
+        <div class="fdr-header-name">${escapeHtml(CONFIG.agentName)}</div>
         <div class="fdr-header-status">We typically reply instantly</div>
       </div>
       <button class="fdr-close" aria-label="Close chat">✕</button>
@@ -382,7 +397,7 @@
       <button class="fdr-send-btn" id="fdr-send-btn">Send</button>
     </div>
     <div class="fdr-powered" id="fdr-powered" style="display:none;">
-      Powered by <a href="https://frontdeskreply.com" target="_blank" rel="noopener">FrontdeskReply</a>
+      ${CONFIG.hidePoweredBy ? "" : "Powered by <a href=\"https://frontdeskreply.com\" target=\"_blank\" rel=\"noopener\">FrontdeskReply</a>"}
     </div>
   `;
   shadow.appendChild(win);

@@ -717,6 +717,24 @@ export default function SettingsPage() {
                   </div>
                 )}
               </Section>
+
+              {/* Widget Branding — Pro Only */}
+              <Section title="Widget Branding" subtitle={currentPlan === "pro" ? "Customize how your chatbot looks on your website" : "Pro plan feature — remove FrontdeskReply branding and customize your chatbot"}>
+                {currentPlan === "pro" ? (
+                  <WidgetBranding businessId={businessId} apiUrl={API} />
+                ) : (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <span style={{ fontSize: "28px", display: "block", marginBottom: "10px" }}>🎨</span>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Custom Branding — Pro Plan Feature</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                      Remove the "Powered by FrontdeskReply" badge, rename your chatbot, customize colors, and personalize the greeting message.
+                    </div>
+                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                      Upgrade to Pro — $199/mo
+                    </a>
+                  </div>
+                )}
+              </Section>
             </div>
           )}
 
@@ -808,6 +826,95 @@ function FAQEditor({ faq, onChange, onSave, onCancel, isNew }: {
         <button onClick={onCancel} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-subtle)", borderRadius: "7px", padding: "8px 14px", fontSize: "12.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
           Cancel
         </button>
+      </div>
+    </div>
+  );
+}
+
+function WidgetBranding({ businessId, apiUrl }: { businessId: string; apiUrl: string }) {
+  const [chatbotName, setChatbotName] = useState("Vela");
+  const [greetingMsg, setGreetingMsg] = useState("");
+  const [brandColor, setBrandColor] = useState("#E8714A");
+  const [showPowered, setShowPowered] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/settings/widget-branding?business_id=${businessId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.chatbot_name) setChatbotName(d.chatbot_name);
+        if (d.greeting_message) setGreetingMsg(d.greeting_message);
+        if (d.brand_color) setBrandColor(d.brand_color);
+        if (d.show_powered_by !== undefined) setShowPowered(d.show_powered_by);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [businessId, apiUrl]);
+
+  async function saveBranding() {
+    setSaving(true);
+    try {
+      await fetch(`${apiUrl}/settings/widget-branding?business_id=${businessId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatbot_name: chatbotName, greeting_message: greetingMsg, brand_color: brandColor, show_powered_by: showPowered }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
+  }
+
+  if (!loaded) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+        <div>
+          <label style={{ display: "block", fontSize: "11.5px", fontWeight: "500", color: "var(--text-muted)", marginBottom: "6px" }}>Chatbot Name</label>
+          <input type="text" value={chatbotName} onChange={e => setChatbotName(e.target.value)} placeholder="Vela" style={{ width: "100%", padding: "9px 12px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: "8px", fontSize: "13px", color: "var(--text-primary)", outline: "none", fontFamily: "inherit" }} />
+          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>Displayed in the chat header and greeting</div>
+        </div>
+        <div>
+          <label style={{ display: "block", fontSize: "11.5px", fontWeight: "500", color: "var(--text-muted)", marginBottom: "6px" }}>Brand Color</label>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)} style={{ width: "40px", height: "36px", border: "1px solid var(--border-subtle)", borderRadius: "6px", cursor: "pointer", background: "none" }} />
+            <input type="text" value={brandColor} onChange={e => setBrandColor(e.target.value)} style={{ flex: 1, padding: "9px 12px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: "8px", fontSize: "13px", color: "var(--text-primary)", outline: "none", fontFamily: "monospace" }} />
+          </div>
+          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>Chat bubble, header, and send button color</div>
+        </div>
+      </div>
+      <div>
+        <label style={{ display: "block", fontSize: "11.5px", fontWeight: "500", color: "var(--text-muted)", marginBottom: "6px" }}>Custom Greeting Message</label>
+        <input type="text" value={greetingMsg} onChange={e => setGreetingMsg(e.target.value)} placeholder={`Hi! I'm ${chatbotName} from your business. How can I help?`} style={{ width: "100%", padding: "9px 12px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: "8px", fontSize: "13px", color: "var(--text-primary)", outline: "none", fontFamily: "inherit" }} />
+        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>Leave blank for default greeting</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)", borderRadius: "8px" }}>
+        <div>
+          <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)" }}>Show &ldquo;Powered by FrontdeskReply&rdquo; badge</div>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>Toggle off to white-label the widget</div>
+        </div>
+        <button onClick={() => setShowPowered(!showPowered)} style={{
+          width: "42px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer",
+          background: showPowered ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.08)",
+          position: "relative", transition: "background 0.2s", flexShrink: 0,
+        }}>
+          <div style={{
+            width: "18px", height: "18px", borderRadius: "50%",
+            background: showPowered ? "var(--green)" : "var(--text-muted)",
+            position: "absolute", top: "3px",
+            left: showPowered ? "21px" : "3px", transition: "left 0.2s",
+          }} />
+        </button>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <button onClick={saveBranding} disabled={saving} style={{
+          background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", borderRadius: "9px",
+          padding: "10px 24px", fontSize: "13.5px", fontWeight: "600", color: "#fff", cursor: "pointer",
+          opacity: saving ? 0.7 : 1,
+        }}>{saving ? "Saving..." : "Save Branding"}</button>
+        {saved && <span style={{ fontSize: "13px", color: "var(--green)" }}>&#10003; Saved</span>}
       </div>
     </div>
   );

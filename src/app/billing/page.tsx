@@ -48,7 +48,7 @@ const PLANS = [
       "Everything in Growth",
       "Vela Voice AI \u2014 200 min/mo included ($0.20/min after)",
       "Weekly email reports (automated)",
-      "Custom chatbot branding",
+      "White-label widget \u2014 custom name, colors, no branding",
       "Internal lead notes & CRM tools",
       "API access + webhook integrations",
       "Dedicated onboarding",
