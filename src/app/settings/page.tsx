@@ -46,6 +46,10 @@ export default function SettingsPage() {
   const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
   const [newFaq, setNewFaq] = useState<FAQ | null>(null);
   const [currentPlan, setCurrentPlan] = useState("starter");
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voicePhone, setVoicePhone] = useState("");
+  const [provisioning, setProvisioning] = useState(false);
+  const [provisionError, setProvisionError] = useState("");
 
   // Import feature state
   const [importData, setImportData] = useState<any>(null);
@@ -58,10 +62,12 @@ export default function SettingsPage() {
       fetch(`${API}/settings/profile?business_id=${businessId}`).then(r => r.json()),
       fetch(`${API}/settings/faqs?business_id=${businessId}`).then(r => r.json()),
       fetch(`${API}/billing/plan?business_id=${businessId}`).then(r => r.json()),
-    ]).then(([p, f, plan]) => {
+      fetch(`${API}/voice/status?business_id=${businessId}`).then(r => r.json()),
+    ]).then(([p, f, plan, voice]) => {
       if (p && !p.detail) setProfile({ ...profile, ...p });
       if (f?.faqs) setFaqs(f.faqs);
       if (plan) setCurrentPlan(plan.plan_tier || "starter");
+      if (voice?.enabled) { setVoiceEnabled(true); setVoicePhone(voice.phone_number || ""); }
     }).finally(() => setLoading(false));
   }, [isLoaded, businessId]);
 
@@ -612,23 +618,41 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Voice AI Section — Pro Only */}
-              <Section title="Milo Voice AI" subtitle="Pro plan feature — Milo answers phone calls using your FAQs">
-                {currentPlan === "pro" ? (
+              {/* Voice AI Section */}
+              <Section title="Milo Voice AI" subtitle={voiceEnabled ? "Your AI receptionist is live and answering calls" : "Pro plan feature — Milo answers phone calls using your FAQs"}>
+                {currentPlan !== "pro" ? (
+                  /* Not Pro — show upgrade prompt */
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <span style={{ fontSize: "32px", display: "block", marginBottom: "12px" }}>📞</span>
+                    <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Milo Voice AI — Pro Plan Feature</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                      Milo can answer phone calls using the same FAQs and personality as your chat widget. Callers get instant AI-powered answers 24/7.
+                    </div>
+                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                      Upgrade to Pro — $199/mo
+                    </a>
+                  </div>
+                ) : voiceEnabled ? (
+                  /* Pro + Voice enabled — show active status */
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "10px" }}>
-                      <span style={{ fontSize: "24px" }}>📞</span>
-                      <div>
-                        <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--green)" }}>Voice AI is active on your Pro plan</div>
-                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Milo answers phone calls with the same FAQs and personality as your chat widget.</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px 18px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "10px" }}>
+                      <span style={{ fontSize: "28px" }}>📞</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--green)" }}>Voice AI Active</div>
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Milo is answering calls at this number</div>
+                      </div>
+                      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "10px 16px" }}>
+                        <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "2px" }}>Your Milo Number</div>
+                        <div style={{ fontSize: "18px", fontWeight: "700", color: "var(--accent)", letterSpacing: "0.02em" }}>{voicePhone}</div>
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                       {[
-                        { icon: "📞", label: "Dedicated Twilio Number", sub: "Contact hello@frontdeskreply.com to configure your voice number" },
-                        { icon: "↪️", label: "Call Forwarding", sub: "Forward your existing business number to Milo when you're unavailable" },
+                        { icon: "📞", label: "Dedicated Voice Number", sub: `Milo answers all calls to ${voicePhone}` },
+                        { icon: "↪️", label: "Call Forwarding", sub: `Forward your main business number to ${voicePhone} when you're unavailable` },
                         { icon: "📝", label: "Call Transcripts", sub: "Every call is transcribed and saved to Past Conversations" },
-                        { icon: "📥", label: "Caller Lead Capture", sub: "Callers are automatically added to your Lead Database by phone number" },
+                        { icon: "📥", label: "Caller Lead Capture", sub: "Callers are automatically added to your Lead Database" },
+                        { icon: "⏱️", label: "200 Minutes Included", sub: "Additional minutes are $0.20/min. Calls auto-end after 5 minutes." },
                       ].map(item => (
                         <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "10px 14px", borderRadius: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)" }}>
                           <span style={{ fontSize: "16px", flexShrink: 0 }}>{item.icon}</span>
@@ -641,15 +665,55 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ padding: "20px", textAlign: "center" }}>
-                    <span style={{ fontSize: "32px", display: "block", marginBottom: "12px" }}>📞</span>
-                    <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Milo Voice AI — Pro Plan Feature</div>
-                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
-                      Milo can answer phone calls using the same FAQs and personality as your chat widget. Callers get instant AI-powered answers 24/7. Call transcripts are saved to your dashboard.
+                  /* Pro but Voice not enabled — show Enable button */
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", padding: "24px" }}>
+                    <span style={{ fontSize: "40px" }}>📞</span>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "6px" }}>Enable Milo Voice AI</div>
+                      <div style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6, maxWidth: "400px" }}>
+                        Milo will answer phone calls using your FAQs. A dedicated phone number will be assigned automatically. 200 minutes/month included in your Pro plan.
+                      </div>
                     </div>
-                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
-                      Upgrade to Pro — $199/mo
-                    </a>
+                    {provisionError && (
+                      <div style={{ padding: "10px 16px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "8px", fontSize: "13px", color: "#ef4444" }}>
+                        {provisionError}
+                      </div>
+                    )}
+                    <button
+                      onClick={async () => {
+                        setProvisioning(true);
+                        setProvisionError("");
+                        try {
+                          const res = await fetch(`${API}/voice/provision?business_id=${businessId}`, { method: "POST" });
+                          const data = await res.json();
+                          if (data.phone_number) {
+                            setVoiceEnabled(true);
+                            setVoicePhone(data.phone_number);
+                          } else {
+                            setProvisionError(data.detail || data.message || "Provisioning failed. Please try again.");
+                          }
+                        } catch (e) {
+                          setProvisionError("Network error. Please try again.");
+                        } finally {
+                          setProvisioning(false);
+                        }
+                      }}
+                      disabled={provisioning}
+                      style={{
+                        padding: "14px 32px", borderRadius: "10px", fontSize: "15px", fontWeight: "700",
+                        background: provisioning ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg, #f97316, #ea580c)",
+                        color: "#fff", border: "none", cursor: provisioning ? "wait" : "pointer",
+                        boxShadow: provisioning ? "none" : "0 4px 12px rgba(249,115,22,0.3)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {provisioning ? "Setting up your AI receptionist..." : "Enable Voice AI"}
+                    </button>
+                    {provisioning && (
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic" }}>
+                        This takes about 10 seconds — creating your AI agent and assigning a phone number...
+                      </div>
+                    )}
                   </div>
                 )}
               </Section>
