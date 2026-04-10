@@ -802,7 +802,7 @@ export default function LeadDatabasePage() {
                     )}
 
                     {/* Internal Notes — Pro only */}
-                    {currentPlan === "pro" && (
+                    {["pro","enterprise"].includes(currentPlan) && (
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
                         Internal Notes

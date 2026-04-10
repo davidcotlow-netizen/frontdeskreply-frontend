@@ -718,9 +718,9 @@ export default function SettingsPage() {
                 )}
               </Section>
 
-              {/* WhatsApp Integration — Pro Only */}
-              <Section title="WhatsApp Integration" subtitle={currentPlan === "pro" ? "Vela answers WhatsApp messages using your FAQs" : "Pro plan feature — Vela responds to WhatsApp messages automatically"}>
-                {currentPlan === "pro" ? (
+              {/* WhatsApp Integration — Enterprise Only */}
+              <Section title="WhatsApp Integration" subtitle={currentPlan === "enterprise" ? "Vela answers WhatsApp messages using your FAQs" : "Enterprise plan feature — Vela responds to WhatsApp messages automatically"}>
+                {currentPlan === "enterprise" ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px", background: "rgba(37,211,102,0.08)", border: "1px solid rgba(37,211,102,0.2)", borderRadius: "10px" }}>
                       <span style={{ fontSize: "24px" }}>💬</span>
@@ -756,7 +756,7 @@ export default function SettingsPage() {
                 ) : (
                   <div style={{ padding: "20px", textAlign: "center" }}>
                     <span style={{ fontSize: "28px", display: "block", marginBottom: "10px" }}>💬</span>
-                    <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>WhatsApp Integration — Pro Plan Feature</div>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>WhatsApp Integration — Enterprise Plan Feature</div>
                     <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
                       Vela can respond to WhatsApp messages using the same FAQs and personality. Customers message your number on WhatsApp and get instant AI answers.
                     </div>
@@ -768,8 +768,8 @@ export default function SettingsPage() {
               </Section>
 
               {/* Appointment Booking — Pro Only */}
-              <Section title="Appointment Booking" subtitle={currentPlan === "pro" ? "Connect your scheduling tool so Vela can book appointments" : "Pro plan feature — let Vela schedule appointments for your customers"}>
-                {currentPlan === "pro" ? (
+              <Section title="Appointment Booking" subtitle={["pro","enterprise"].includes(currentPlan) ? "Connect your scheduling tool so Vela can book appointments" : "Pro plan feature — let Vela schedule appointments for your customers"}>
+                {["pro","enterprise"].includes(currentPlan) ? (
                   <BookingSettings businessId={businessId} apiUrl={API} />
                 ) : (
                   <div style={{ padding: "20px", textAlign: "center" }}>
@@ -786,8 +786,8 @@ export default function SettingsPage() {
               </Section>
 
               {/* Widget Branding — Pro Only */}
-              <Section title="Widget Branding" subtitle={currentPlan === "pro" ? "Customize how your chatbot looks on your website" : "Pro plan feature — remove FrontdeskReply branding and customize your chatbot"}>
-                {currentPlan === "pro" ? (
+              <Section title="Widget Branding" subtitle={["pro","enterprise"].includes(currentPlan) ? "Customize how your chatbot looks on your website" : "Pro plan feature — remove FrontdeskReply branding and customize your chatbot"}>
+                {["pro","enterprise"].includes(currentPlan) ? (
                   <WidgetBranding businessId={businessId} apiUrl={API} />
                 ) : (
                   <div style={{ padding: "20px", textAlign: "center" }}>
