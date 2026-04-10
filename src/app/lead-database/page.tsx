@@ -237,6 +237,7 @@ export default function LeadDatabasePage() {
   const [currentPlan, setCurrentPlan] = useState("starter");
   const [search, setSearch] = useState("");
   const [filterIntent, setFilterIntent] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [sortField, setSortField] = useState<SortField>("last_contact");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -413,9 +414,10 @@ export default function LeadDatabasePage() {
         (l.email || "").toLowerCase().includes(q) ||
         (l.phone || "").includes(q);
       const matchIntent = filterIntent === "all" || l.top_intent === filterIntent;
+      const matchSource = sourceFilter === "all" || (l.heard_about_us || "").toLowerCase() === sourceFilter.toLowerCase();
       const matchDateFrom = !dateFrom || l.first_contact >= dateFrom;
       const matchDateTo = !dateTo || l.first_contact <= dateTo + "T23:59:59";
-      return matchSearch && matchIntent && matchDateFrom && matchDateTo;
+      return matchSearch && matchIntent && matchSource && matchDateFrom && matchDateTo;
     });
 
     result.sort((a, b) => {
@@ -430,7 +432,7 @@ export default function LeadDatabasePage() {
     });
 
     return result;
-  }, [leads, search, filterIntent, sortField, sortDir, dateFrom, dateTo]);
+  }, [leads, search, filterIntent, sourceFilter, sortField, sortDir, dateFrom, dateTo]);
 
   function toggleSort(field: SortField) {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -536,6 +538,21 @@ export default function LeadDatabasePage() {
           <option value="all">All inquiry types</option>
           {intents.map(i => (
             <option key={i} value={i}>{INTENT_LABELS[i] || i}</option>
+          ))}
+        </select>
+        <select
+          value={sourceFilter}
+          onChange={e => setSourceFilter(e.target.value)}
+          style={{
+            padding: "9px 12px", background: "var(--bg-card)",
+            border: "1px solid var(--border-subtle)", borderRadius: 8,
+            fontSize: 13, color: "var(--text-primary)", cursor: "pointer",
+            outline: "none", fontFamily: "inherit",
+          }}
+        >
+          <option value="all">All Sources</option>
+          {["Instagram", "Google", "Facebook", "Friend", "Website", "TikTok", "Word of Mouth", "Other"].map(s => (
+            <option key={s} value={s}>{s}</option>
           ))}
         </select>
       </div>

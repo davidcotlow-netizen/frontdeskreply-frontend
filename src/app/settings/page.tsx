@@ -44,12 +44,17 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
+  const [deletingFaqId, setDeletingFaqId] = useState<string | null>(null);
   const [newFaq, setNewFaq] = useState<FAQ | null>(null);
   const [currentPlan, setCurrentPlan] = useState("starter");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voicePhone, setVoicePhone] = useState("");
   const [provisioning, setProvisioning] = useState(false);
   const [provisionError, setProvisionError] = useState("");
+
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState({ notify_on_chat: true, notify_on_call: true, notify_on_sms: true });
+  const [notifSaving, setNotifSaving] = useState(false);
 
   // Import feature state
   const [importData, setImportData] = useState<any>(null);
@@ -63,11 +68,13 @@ export default function SettingsPage() {
       fetch(`${API}/settings/faqs?business_id=${businessId}`).then(r => r.json()),
       fetch(`${API}/billing/plan?business_id=${businessId}`).then(r => r.json()),
       fetch(`${API}/voice/status?business_id=${businessId}`).then(r => r.json()),
-    ]).then(([p, f, plan, voice]) => {
+      fetch(`${API}/settings/notifications?business_id=${businessId}`).then(r => r.json()).catch(() => ({})),
+    ]).then(([p, f, plan, voice, notif]) => {
       if (p && !p.detail) setProfile({ ...profile, ...p });
       if (f?.faqs) setFaqs(f.faqs);
       if (plan) setCurrentPlan(plan.plan_tier || "starter");
       if (voice?.enabled) { setVoiceEnabled(true); setVoicePhone(voice.phone_number || ""); }
+      if (notif && !notif.detail) setNotifPrefs({ ...notifPrefs, ...notif });
     }).finally(() => setLoading(false));
   }, [isLoaded, businessId]);
 
@@ -523,10 +530,39 @@ export default function SettingsPage() {
                               <button onClick={() => setEditingFaqId(faq.id!)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-subtle)", borderRadius: "6px", padding: "5px 10px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
                                 Edit
                               </button>
-                              <button onClick={() => deleteFaq(faq.id!)} style={{ background: "transparent", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "6px", padding: "5px 10px", fontSize: "11.5px", color: "rgba(239,68,68,0.6)", cursor: "pointer" }}>
+                              <button onClick={() => setDeletingFaqId(faq.id!)} style={{ background: "transparent", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "6px", padding: "5px 10px", fontSize: "11.5px", color: "rgba(239,68,68,0.6)", cursor: "pointer", position: "relative" }}>
                                 Delete
                               </button>
                             </div>
+                            {deletingFaqId === faq.id && (
+                              <div style={{
+                                position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                                background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
+                                zIndex: 9999,
+                              }} onClick={() => setDeletingFaqId(null)}>
+                                <div onClick={e => e.stopPropagation()} style={{
+                                  background: "var(--bg-card)", border: "1px solid var(--border-subtle)",
+                                  borderRadius: 12, padding: "24px 28px", maxWidth: 340,
+                                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                                }}>
+                                  <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-primary)", fontWeight: 500, lineHeight: 1.5 }}>
+                                    Delete this FAQ? This can&apos;t be undone.
+                                  </p>
+                                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                                    <button onClick={() => setDeletingFaqId(null)} style={{
+                                      padding: "7px 16px", borderRadius: 7, fontSize: 12.5, fontWeight: 500,
+                                      background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)",
+                                      color: "var(--text-secondary)", cursor: "pointer",
+                                    }}>Cancel</button>
+                                    <button onClick={async () => { await deleteFaq(faq.id!); setDeletingFaqId(null); }} style={{
+                                      padding: "7px 16px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+                                      background: "#dc2626", border: "none",
+                                      color: "#fff", cursor: "pointer",
+                                    }}>Delete</button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -808,21 +844,60 @@ export default function SettingsPage() {
           {/* ── NOTIFICATIONS TAB ── */}
           {tab === "notifications" && (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <Section title="Chat Activity" subtitle="Get notified when visitors use your chatbot">
-                <NotifRow label="New Conversation Alert" sub="Notification in your dashboard when a visitor starts a chat" enabled={true} />
-                <NotifRow label="Daily Chat Summary" sub="End-of-day recap of conversations and leads captured" enabled={false} />
+              <Section title="Engagement Email Notifications" subtitle="Get an email summary after each customer interaction">
+                <NotifRow
+                  label="Email me after each chat conversation"
+                  sub="Receive a branded email with the full chat transcript after every website chat"
+                  enabled={notifPrefs.notify_on_chat}
+                  onChange={async (val) => {
+                    setNotifPrefs({ ...notifPrefs, notify_on_chat: val });
+                    setNotifSaving(true);
+                    try {
+                      await fetch(`${API}/settings/notifications?business_id=${businessId}`, {
+                        method: "PATCH", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ notify_on_chat: val }),
+                      });
+                    } finally { setNotifSaving(false); }
+                  }}
+                />
+                <NotifRow
+                  label="Email me after each phone call"
+                  sub="Receive a recap email with caller info and call transcript after every voice call"
+                  enabled={notifPrefs.notify_on_call}
+                  locked={!["pro", "enterprise"].includes(currentPlan)}
+                  lockedMessage="Upgrade to Pro to enable call notifications"
+                  onChange={async (val) => {
+                    setNotifPrefs({ ...notifPrefs, notify_on_call: val });
+                    setNotifSaving(true);
+                    try {
+                      await fetch(`${API}/settings/notifications?business_id=${businessId}`, {
+                        method: "PATCH", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ notify_on_call: val }),
+                      });
+                    } finally { setNotifSaving(false); }
+                  }}
+                />
+                <NotifRow
+                  label="Email me after each text message"
+                  sub="Receive a summary email with the SMS exchange after every text conversation"
+                  enabled={notifPrefs.notify_on_sms}
+                  locked={!["pro", "enterprise"].includes(currentPlan)}
+                  lockedMessage="Upgrade to Pro to enable SMS notifications"
+                  onChange={async (val) => {
+                    setNotifPrefs({ ...notifPrefs, notify_on_sms: val });
+                    setNotifSaving(true);
+                    try {
+                      await fetch(`${API}/settings/notifications?business_id=${businessId}`, {
+                        method: "PATCH", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ notify_on_sms: val }),
+                      });
+                    } finally { setNotifSaving(false); }
+                  }}
+                />
               </Section>
-              <Section title="Lead Alerts" subtitle="Stay on top of new leads from chat conversations">
-                <NotifRow label="New Lead Captured" sub="Alert when a visitor provides their contact information" enabled={true} />
-                <NotifRow label="Email Digest" sub="Weekly email summary of all leads and chat activity" enabled={false} />
-              </Section>
-              <div style={{ background: "var(--bg-card)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: "12px", padding: "16px 18px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
-                <span style={{ fontSize: "18px" }}>ℹ️</span>
-                <div>
-                  <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)", marginBottom: "3px" }}>More notification options coming soon</div>
-                  <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>SMS alerts, Slack integration, and custom notification rules are on the roadmap.</div>
-                </div>
-              </div>
+              {notifSaving && (
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>Saving...</div>
+              )}
             </div>
           )}
         </>
@@ -1074,23 +1149,31 @@ function WidgetBranding({ businessId, apiUrl }: { businessId: string; apiUrl: st
   );
 }
 
-function NotifRow({ label, sub, enabled }: { label: string; sub: string; enabled: boolean }) {
-  const [on, setOn] = useState(enabled);
+function NotifRow({ label, sub, enabled, onChange, locked, lockedMessage }: {
+  label: string; sub: string; enabled: boolean;
+  onChange?: (val: boolean) => void; locked?: boolean; lockedMessage?: string;
+}) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border-subtle)", opacity: locked ? 0.55 : 1 }}>
       <div>
         <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)" }}>{label}</div>
         <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>{sub}</div>
+        {locked && lockedMessage && (
+          <div style={{ fontSize: "11px", color: "rgba(251,191,36,0.85)", marginTop: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+            <span>🔒</span> {lockedMessage}
+          </div>
+        )}
       </div>
-      <button onClick={() => setOn(!on)} style={{
-        width: "38px", height: "22px", borderRadius: "11px", border: "none", cursor: "pointer",
-        background: on ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.08)", position: "relative", transition: "background 0.2s", flexShrink: 0,
+      <button onClick={() => { if (!locked && onChange) onChange(!enabled); }} style={{
+        width: "38px", height: "22px", borderRadius: "11px", border: "none",
+        cursor: locked ? "not-allowed" : "pointer",
+        background: enabled ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.08)", position: "relative", transition: "background 0.2s", flexShrink: 0,
       }}>
         <div style={{
           width: "16px", height: "16px", borderRadius: "50%",
-          background: on ? "var(--green)" : "var(--text-muted)",
+          background: enabled ? "var(--green)" : "var(--text-muted)",
           position: "absolute", top: "3px",
-          left: on ? "19px" : "3px", transition: "left 0.2s",
+          left: enabled ? "19px" : "3px", transition: "left 0.2s",
         }} />
       </button>
     </div>

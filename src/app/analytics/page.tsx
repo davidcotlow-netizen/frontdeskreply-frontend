@@ -30,6 +30,13 @@ interface DayData { date: string; count: number; }
 interface ResponseDay { date: string; avg_seconds: number | null; count: number; }
 interface QuestionItem { question: string; count: number; }
 
+interface LeadSourceItem { source: string; count: number; }
+interface LeadSourceData { sources: LeadSourceItem[]; total_with_source: number; channel_breakdown: { chat: number; phone: number }; }
+interface FunnelStage { stage: string; count: number; }
+interface FunnelData { funnel: FunnelStage[]; }
+interface PeakHourCell { day: string; hour: number; count: number; }
+interface PeakHoursData { data: PeakHourCell[]; max_count: number; days: string[]; }
+
 function formatSeconds(s: number | null): string {
   if (s === null || s === undefined) return "—";
   if (s < 60) return `${Math.round(s)}s`;
@@ -114,6 +121,9 @@ export default function AnalyticsPage() {
   const [callsByDay, setCallsByDay] = useState<DayData[]>([]);
   const [responseByDay, setResponseByDay] = useState<ResponseDay[]>([]);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
+  const [leadSources, setLeadSources] = useState<LeadSourceData | null>(null);
+  const [funnelData, setFunnelData] = useState<FunnelData | null>(null);
+  const [peakHours, setPeakHours] = useState<PeakHoursData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -126,12 +136,18 @@ export default function AnalyticsPage() {
       fetch(`${API}/analytics/calls-by-day?business_id=${businessId}&period=${period}`).then(r => r.json()),
       fetch(`${API}/analytics/response-time-trend?business_id=${businessId}&period=${period}`).then(r => r.json()),
       fetch(`${API}/analytics/top-questions?business_id=${businessId}&period=${period}`).then(r => r.json()),
-    ]).then(([s, c, cb, r, q]) => {
+      fetch(`${API}/analytics/lead-sources?business_id=${businessId}&period=${period}`).then(r => r.json()).catch(() => null),
+      fetch(`${API}/analytics/conversion-funnel?business_id=${businessId}&period=${period}`).then(r => r.json()).catch(() => null),
+      fetch(`${API}/analytics/peak-hours?business_id=${businessId}&period=${period}`).then(r => r.json()).catch(() => null),
+    ]).then(([s, c, cb, r, q, ls, fn, ph]) => {
       setSummary(s);
       setConvByDay(c.data || []);
       setCallsByDay(cb.data || []);
       setResponseByDay(r.data || []);
       setQuestions(q.questions || []);
+      setLeadSources(ls);
+      setFunnelData(fn);
+      setPeakHours(ph);
     }).catch(console.error).finally(() => setLoading(false));
   }, [isLoaded, businessId, period]);
 
@@ -395,6 +411,57 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </div>
+
+      {/* Lead Sources */}
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "20px", marginTop: 16 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>Lead Sources &mdash; How They Found You</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 20 }}>Where your leads are coming from</div>
+        {loading ? (
+          <div style={{ height: 200, background: "rgba(255,255,255,0.03)", borderRadius: 8 }} className="shimmer" />
+        ) : !leadSources || !leadSources.sources || leadSources.sources.length === 0 ? (
+          <div style={{ padding: "40px 0", textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>📍</div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 6 }}>No source data yet</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Vela asks callers how they heard about you &mdash; data will appear after calls.</div>
+          </div>
+        ) : (
+          <LeadSourceChart data={leadSources} />
+        )}
+      </div>
+
+      {/* Conversion Funnel */}
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "20px", marginTop: 16 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>Conversion Funnel</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 20 }}>How leads progress through your pipeline</div>
+        {loading ? (
+          <div style={{ height: 200, background: "rgba(255,255,255,0.03)", borderRadius: 8 }} className="shimmer" />
+        ) : !funnelData || !funnelData.funnel || funnelData.funnel.length === 0 ? (
+          <div style={{ padding: "40px 0", textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>🔽</div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 6 }}>No funnel data yet</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Start capturing leads to see your conversion pipeline.</div>
+          </div>
+        ) : (
+          <ConversionFunnel data={funnelData} />
+        )}
+      </div>
+
+      {/* Peak Hours Heatmap */}
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "20px", marginTop: 16 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>Peak Activity Hours</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 20 }}>When your chats and calls happen most</div>
+        {loading ? (
+          <div style={{ height: 200, background: "rgba(255,255,255,0.03)", borderRadius: 8 }} className="shimmer" />
+        ) : !peakHours || !peakHours.data || peakHours.data.length === 0 ? (
+          <div style={{ padding: "40px 0", textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>🕐</div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 6 }}>No activity data yet</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Usage patterns will appear as your chats and calls grow.</div>
+          </div>
+        ) : (
+          <PeakHoursHeatmap data={peakHours} />
+        )}
+      </div>
     </div>
   );
 }
@@ -433,6 +500,234 @@ function ResponseTimeChart({ data }: { data: ResponseDay[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ── Lead Source Donut Chart ────────────────────────────────────── */
+const SOURCE_COLORS: Record<string, string> = {
+  instagram: "#E4405F", google: "#4285F4", facebook: "#1877F2",
+  friend: "#10b981", website: "#f97316", tiktok: "#000000", other: "#6b7280",
+};
+
+function LeadSourceChart({ data }: { data: LeadSourceData }) {
+  const total = data.sources.reduce((s, d) => s + d.count, 0) || 1;
+  const size = 160;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 60;
+  const inner = 36;
+
+  // Build donut segments
+  let cumAngle = -Math.PI / 2;
+  const segments = data.sources.map(src => {
+    const frac = src.count / total;
+    const startAngle = cumAngle;
+    cumAngle += frac * 2 * Math.PI;
+    const endAngle = cumAngle;
+    const largeArc = frac > 0.5 ? 1 : 0;
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const ix1 = cx + inner * Math.cos(endAngle);
+    const iy1 = cy + inner * Math.sin(endAngle);
+    const ix2 = cx + inner * Math.cos(startAngle);
+    const iy2 = cy + inner * Math.sin(startAngle);
+    const color = SOURCE_COLORS[src.source.toLowerCase()] || SOURCE_COLORS.other;
+    const d = `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${inner} ${inner} 0 ${largeArc} 0 ${ix2} ${iy2} Z`;
+    return { d, color, source: src.source, count: src.count };
+  });
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap" }}>
+        {/* Donut SVG */}
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+          {segments.map((seg, i) => (
+            <path key={i} d={seg.d} fill={seg.color} opacity={0.85} />
+          ))}
+          <text x={cx} y={cy - 6} textAnchor="middle" fill="var(--text-primary)" fontSize="20" fontWeight="700">{total}</text>
+          <text x={cx} y={cy + 12} textAnchor="middle" fill="var(--text-muted)" fontSize="10">total</text>
+        </svg>
+
+        {/* Legend */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {data.sources.map(src => {
+            const color = SOURCE_COLORS[src.source.toLowerCase()] || SOURCE_COLORS.other;
+            return (
+              <div key={src.source} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 3, background: color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500, textTransform: "capitalize" }}>{src.source}</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'Geist Mono', monospace" }}>{src.count}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Channel breakdown badges */}
+      {data.channel_breakdown && (
+        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+          <div style={{
+            padding: "6px 14px", borderRadius: 8,
+            background: "rgba(232,113,74,0.1)", border: "1px solid rgba(232,113,74,0.2)",
+            fontSize: 12, fontWeight: 600, color: "#E8714A",
+          }}>
+            Chat: {data.channel_breakdown.chat}
+          </div>
+          <div style={{
+            padding: "6px 14px", borderRadius: 8,
+            background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)",
+            fontSize: 12, fontWeight: 600, color: "#8b5cf6",
+          }}>
+            Phone: {data.channel_breakdown.phone}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Conversion Funnel ──────────────────────────────────────────── */
+function ConversionFunnel({ data }: { data: FunnelData }) {
+  const stages = data.funnel;
+  const maxCount = stages.length > 0 ? Math.max(...stages.map(s => s.count), 1) : 1;
+
+  // Gradient from blue to green
+  const colorStops = stages.map((_, i) => {
+    const t = stages.length > 1 ? i / (stages.length - 1) : 0;
+    // Interpolate #3b82f6 -> #10b981
+    const r = Math.round(59 + t * (16 - 59));
+    const g = Math.round(130 + t * (185 - 130));
+    const b = Math.round(246 + t * (129 - 246));
+    return `rgb(${r},${g},${b})`;
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {stages.map((stage, i) => {
+        const widthPct = Math.max((stage.count / maxCount) * 100, 12);
+        const color = colorStops[i];
+        const prevCount = i > 0 ? stages[i - 1].count : null;
+        const dropPct = prevCount && prevCount > 0
+          ? Math.round(((prevCount - stage.count) / prevCount) * 100)
+          : null;
+
+        return (
+          <div key={i}>
+            {/* Drop indicator between stages */}
+            {dropPct !== null && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4px 0" }}>
+                <span style={{ fontSize: 10.5, color: "var(--text-muted)", fontFamily: "'Geist Mono', monospace" }}>
+                  ▼ {dropPct}% drop
+                </span>
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{
+                fontSize: 12, fontWeight: 500, color: "var(--text-secondary)",
+                minWidth: 110, textAlign: "right",
+              }}>
+                {stage.stage}
+              </span>
+              <div style={{ flex: 1, position: "relative" }}>
+                <div style={{
+                  height: 32, borderRadius: 6,
+                  width: `${widthPct}%`,
+                  background: color, opacity: 0.8,
+                  transition: "width 0.5s ease",
+                  display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 10,
+                  margin: "0 auto 0 0",
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", fontFamily: "'Geist Mono', monospace" }}>
+                    {stage.count}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Peak Hours Heatmap ─────────────────────────────────────────── */
+const HOUR_LABELS: { hour: number; label: string }[] = [
+  { hour: 6, label: "6am" }, { hour: 9, label: "9am" }, { hour: 12, label: "12pm" },
+  { hour: 15, label: "3pm" }, { hour: 18, label: "6pm" }, { hour: 21, label: "9pm" },
+];
+const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const HOURS_RANGE = Array.from({ length: 17 }, (_, i) => i + 6); // 6..22
+
+function PeakHoursHeatmap({ data }: { data: PeakHoursData }) {
+  const maxCount = data.max_count || 1;
+
+  // Build lookup: "Day-Hour" -> count
+  const lookup: Record<string, number> = {};
+  data.data.forEach(c => {
+    // Normalize day name to 3-char
+    const dayShort = c.day.slice(0, 3);
+    lookup[`${dayShort}-${c.hour}`] = c.count;
+  });
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      {/* Hour labels row */}
+      <div style={{ display: "flex", marginLeft: 44, marginBottom: 4, gap: 0 }}>
+        {HOURS_RANGE.map(h => {
+          const lbl = HOUR_LABELS.find(l => l.hour === h);
+          return (
+            <div key={h} style={{
+              flex: 1, minWidth: 0, textAlign: "center",
+              fontSize: 9.5, color: "var(--text-muted)",
+              fontFamily: "'Geist Mono', monospace",
+            }}>
+              {lbl ? lbl.label : ""}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Grid rows */}
+      {DAY_ORDER.map(day => (
+        <div key={day} style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 2 }}>
+          <span style={{
+            fontSize: 11, color: "var(--text-muted)", fontWeight: 500,
+            width: 40, textAlign: "right", paddingRight: 6, flexShrink: 0,
+          }}>
+            {day}
+          </span>
+          {HOURS_RANGE.map(h => {
+            const count = lookup[`${day}-${h}`] || 0;
+            const intensity = count / maxCount;
+            return (
+              <div
+                key={h}
+                title={`${day} ${h}:00 — ${count} activities`}
+                style={{
+                  flex: 1, minWidth: 0, aspectRatio: "1", maxHeight: 28,
+                  margin: 1, borderRadius: 3,
+                  background: count > 0
+                    ? `rgba(249, 115, 22, ${Math.max(intensity * 0.85, 0.1)})`
+                    : "rgba(255,255,255,0.04)",
+                  transition: "background 0.3s ease",
+                }}
+              />
+            );
+          })}
+        </div>
+      ))}
+
+      {/* Legend */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginTop: 10 }}>
+        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Less</span>
+        {[0.1, 0.3, 0.55, 0.8].map((op, i) => (
+          <div key={i} style={{ width: 14, height: 14, borderRadius: 3, background: `rgba(249, 115, 22, ${op})` }} />
+        ))}
+        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>More</span>
+      </div>
     </div>
   );
 }

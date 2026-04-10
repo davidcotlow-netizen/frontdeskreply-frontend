@@ -244,10 +244,20 @@ export default function PastConversationsPage() {
       {tab === "calls" && !loading && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {calls.length === 0 ? (
-            <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "48px 24px", textAlign: "center" }}>
-              <div style={{ fontSize: 28, marginBottom: 10 }}>📞</div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 4 }}>No phone calls yet</div>
-              <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Phone calls will appear here when callers reach Vela Voice AI.</div>
+            <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: "52px 24px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ color: "var(--text-muted)", marginBottom: 14, opacity: 0.5 }}>
+                <path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 5a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 6 }}>No phone calls yet</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", maxWidth: 320, marginBottom: 16, lineHeight: 1.5 }}>
+                Once Voice AI is enabled and callers reach Vela, call transcripts will appear here.
+              </div>
+              <a href="/settings" style={{
+                display: "inline-block", fontSize: 12.5, fontWeight: 600,
+                color: "#fff", background: "var(--accent)",
+                padding: "8px 18px", borderRadius: 8, textDecoration: "none",
+                transition: "opacity 0.15s",
+              }}>Set Up Voice AI →</a>
             </div>
           ) : calls.map((call: any) => {
             const isOpen = expanded === call.id;
@@ -329,15 +339,26 @@ export default function PastConversationsPage() {
       ) : filtered.length === 0 ? (
         <div style={{
           background: "var(--bg-card)", border: "1px solid var(--border-subtle)",
-          borderRadius: 12, padding: "48px 24px", textAlign: "center",
+          borderRadius: 12, padding: "52px 24px", textAlign: "center",
+          display: "flex", flexDirection: "column", alignItems: "center",
         }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>💬</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 4 }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ color: "var(--text-muted)", marginBottom: 14, opacity: 0.5 }}>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 6 }}>
             {search ? "No conversations match your search" : "No conversations yet"}
           </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            {search ? "Try a different search term." : "Chat conversations will appear here once visitors use the live chat on your website."}
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", maxWidth: 340, marginBottom: search ? 0 : 16, lineHeight: 1.5 }}>
+            {search ? "Try a different search term." : "When visitors chat with Vela on your website, conversations will appear here."}
           </div>
+          {!search && (
+            <a href="/settings" style={{
+              display: "inline-block", fontSize: 12.5, fontWeight: 600,
+              color: "#fff", background: "var(--accent)",
+              padding: "8px 18px", borderRadius: 8, textDecoration: "none",
+              transition: "opacity 0.15s",
+            }}>Install Chat Widget →</a>
+          )}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

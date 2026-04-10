@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<any>(null);
   const [recentChats, setRecentChats] = useState<ChatConversation[]>([]);
   const [recentCalls, setRecentCalls] = useState<any[]>([]);
+  const [followUps, setFollowUps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [refreshing, setRefreshing] = useState(false);
@@ -77,14 +78,16 @@ export default function DashboardPage() {
     if (!isLoaded) return;
     if (!silent) setRefreshing(true);
     try {
-      const [s, c, calls] = await Promise.all([
+      const [s, c, calls, fu] = await Promise.all([
         fetch(`${API}/analytics/summary?business_id=${businessId}&period=today`).then(r => r.json()),
         fetch(`${API}/conversations/chat-history?business_id=${businessId}&period=week`).then(r => r.json()),
         fetch(`${API}/conversations/call-history?business_id=${businessId}&period=week`).then(r => r.json()),
+        fetch(`${API}/analytics/follow-up-reminders?business_id=${businessId}`).then(r => r.json()).catch(() => ({ leads: [], count: 0 })),
       ]);
       setSummary(s);
       setRecentChats((c.conversations || []).slice(0, 10));
       setRecentCalls((calls.calls || []).slice(0, 5));
+      setFollowUps(fu.leads || []);
       setLastRefresh(new Date());
     } catch (e) {
       console.error("Dashboard load error:", e);
@@ -186,6 +189,61 @@ export default function DashboardPage() {
           icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" opacity="0.7"/><path d="M8 4.5V8l2.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.7"/></svg>}
         />
       </div>
+
+      {/* Follow-Up Reminders Banner */}
+      {!loading && followUps.length > 0 && (
+        <div className="fade-in" style={{
+          background: "var(--bg-card)", borderLeft: "3px solid #f59e0b",
+          borderRadius: "8px", padding: "16px", marginBottom: "24px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: "#f59e0b" }}>
+                <path d="M8 1L1 14h14L8 1z" stroke="currentColor" strokeWidth="1.3" fill="none"/>
+                <path d="M8 6v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
+              </svg>
+              <span style={{ fontSize: "13.5px", fontWeight: "600", color: "#f59e0b" }}>
+                {followUps.length} lead{followUps.length !== 1 ? "s" : ""} need{followUps.length === 1 ? "s" : ""} follow-up
+              </span>
+            </div>
+            <a href="/lead-database" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: "600", textDecoration: "none" }}>
+              View in Lead Database →
+            </a>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {followUps.slice(0, 5).map((lead: any) => {
+              const daysAgo = lead.last_contact
+                ? Math.floor((Date.now() - new Date(lead.last_contact).getTime()) / 86400000)
+                : null;
+              return (
+                <div key={lead.id} style={{
+                  display: "flex", alignItems: "center", gap: "12px",
+                  padding: "8px 12px", borderRadius: "6px",
+                  background: "rgba(245,158,11,0.04)",
+                }}>
+                  <div style={{ fontSize: "12.5px", fontWeight: "500", color: "var(--text-primary)", minWidth: "120px" }}>
+                    {lead.name}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)", flex: 1 }}>
+                    {lead.phone || lead.email || "No contact"}
+                  </div>
+                  {daysAgo !== null && (
+                    <div style={{ fontSize: "11.5px", color: "var(--text-muted)", flexShrink: 0 }}>
+                      last contact {daysAgo === 0 ? "today" : `${daysAgo}d ago`}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {followUps.length > 5 && (
+              <div style={{ fontSize: "12px", color: "var(--text-muted)", paddingLeft: "12px", marginTop: "2px" }}>
+                +{followUps.length - 5} more
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ROI Banner */}
       {!loading && chatCount > 0 && (
