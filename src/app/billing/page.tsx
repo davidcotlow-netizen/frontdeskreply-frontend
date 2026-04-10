@@ -17,7 +17,6 @@ const PLANS = [
       "Vela AI chatbot on your website",
       "Instant replies 24/7",
       "Lead capture (name, email, phone)",
-      "Email auto-reply \u2014 Vela responds to inbound emails",
       "Conversation history dashboard",
       "Basic analytics",
     ],
@@ -31,6 +30,7 @@ const PLANS = [
     limit: "Unlimited conversations",
     features: [
       "Everything in Starter",
+      "Email auto-reply \u2014 Vela responds to inbound emails",
       "Lead quality scoring (Hot / Warm / Cold)",
       "Email outreach to leads from dashboard",
       "Advanced analytics + Excel exports",
