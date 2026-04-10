@@ -21,6 +21,7 @@ interface Lead {
   chat_session_ids: string[];
   call_count: number;
   call_session_ids: string[];
+  heard_about_us: string | null;
 }
 
 interface ChatTranscript {
@@ -765,6 +766,7 @@ export default function LeadDatabasePage() {
                         { label: "Last Contact", value: formatDate(lead.last_contact) },
                         { label: "Messages", value: String(lead.message_count) },
                         { label: "Source", value: getSourceBadge(lead) },
+                        { label: "Heard About Us", value: lead.heard_about_us ? lead.heard_about_us.charAt(0).toUpperCase() + lead.heard_about_us.slice(1) : "—" },
                         { label: "Calls", value: `${lead.call_count || 0} phone calls` },
                       ].map(({ label, value }) => (
                         <div key={label}>
