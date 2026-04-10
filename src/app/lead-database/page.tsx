@@ -233,6 +233,7 @@ export default function LeadDatabasePage() {
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPlan, setCurrentPlan] = useState("starter");
   const [search, setSearch] = useState("");
   const [filterIntent, setFilterIntent] = useState("all");
   const [sortField, setSortField] = useState<SortField>("last_contact");
@@ -388,10 +389,13 @@ export default function LeadDatabasePage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API}/conversations/leads?business_id=${businessId}`)
-      .then(r => r.json())
-      .then(d => setLeads(d.leads || []))
-      .catch(() => setLeads([]))
+    Promise.all([
+      fetch(`${API}/conversations/leads?business_id=${businessId}`).then(r => r.json()),
+      fetch(`${API}/billing/plan?business_id=${businessId}`).then(r => r.json()),
+    ]).then(([d, plan]) => {
+      setLeads(d.leads || []);
+      if (plan?.plan_tier) setCurrentPlan(plan.plan_tier);
+    }).catch(() => setLeads([]))
       .finally(() => setLoading(false));
   }, [businessId]);
 
@@ -461,25 +465,27 @@ export default function LeadDatabasePage() {
             Every customer who has ever contacted your business — all time.
           </p>
         </div>
-        <button
-          onClick={() => exportToXLS(filtered, businessName)}
-          disabled={filtered.length === 0}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "10px 20px",
-            background: filtered.length === 0 ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, #f97316, #ea580c)",
-            border: "none", borderRadius: 9, cursor: filtered.length === 0 ? "not-allowed" : "pointer",
-            fontSize: 13.5, fontWeight: 600, color: filtered.length === 0 ? "var(--text-muted)" : "#fff",
-            boxShadow: filtered.length === 0 ? "none" : "0 2px 8px rgba(249,115,22,0.3)",
-            transition: "all 0.15s",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M8 1v9M4 7l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          Export Excel ({filtered.length})
-        </button>
+        {currentPlan !== "starter" && (
+          <button
+            onClick={() => exportToXLS(filtered, businessName)}
+            disabled={filtered.length === 0}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "10px 20px",
+              background: filtered.length === 0 ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, #f97316, #ea580c)",
+              border: "none", borderRadius: 9, cursor: filtered.length === 0 ? "not-allowed" : "pointer",
+              fontSize: 13.5, fontWeight: 600, color: filtered.length === 0 ? "var(--text-muted)" : "#fff",
+              boxShadow: filtered.length === 0 ? "none" : "0 2px 8px rgba(249,115,22,0.3)",
+              transition: "all 0.15s",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1v9M4 7l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Export Excel ({filtered.length})
+          </button>
+        )}
       </div>
 
       {/* Summary cards */}
@@ -549,7 +555,7 @@ export default function LeadDatabasePage() {
 
         <div style={{ flex: 1 }} />
 
-        {selected.size > 0 && (
+        {selected.size > 0 && currentPlan !== "starter" && (
           <>
             <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>{selected.size} selected</span>
             <button onClick={copyEmails} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: "pointer", background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
@@ -768,7 +774,8 @@ export default function LeadDatabasePage() {
                       ))}
                     </div>
 
-                    {/* Lifecycle status */}
+                    {/* Lifecycle status — Growth/Pro only */}
+                    {currentPlan !== "starter" && (
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Lead Status</div>
                       <div style={{ display: "flex", gap: 6 }}>
@@ -792,8 +799,10 @@ export default function LeadDatabasePage() {
                         })}
                       </div>
                     </div>
+                    )}
 
-                    {/* Internal Notes */}
+                    {/* Internal Notes — Pro only */}
+                    {currentPlan === "pro" && (
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
                         Internal Notes
@@ -828,6 +837,10 @@ export default function LeadDatabasePage() {
                         </>
                       )}
                     </div>
+                    )}
+
+                    {/* Lead Status — Growth/Pro only */}
+                    {currentPlan === "starter" ? null : null}
 
                     {/* Chat transcripts */}
                     {lead.email && (
