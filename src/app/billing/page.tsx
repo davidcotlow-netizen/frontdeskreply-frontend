@@ -51,6 +51,7 @@ const PLANS = [
       "Multi-language support \u2014 chat + voice in any language",
       "Weekly email reports (automated)",
       "White-label widget \u2014 custom name, colors, no branding",
+      "Appointment booking \u2014 Calendly / scheduling integration",
       "Internal lead notes & CRM tools",
       "API access + webhook integrations",
       "Dedicated onboarding",

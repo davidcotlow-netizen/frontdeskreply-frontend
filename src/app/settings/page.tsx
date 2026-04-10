@@ -718,6 +718,24 @@ export default function SettingsPage() {
                 )}
               </Section>
 
+              {/* Appointment Booking — Pro Only */}
+              <Section title="Appointment Booking" subtitle={currentPlan === "pro" ? "Connect your scheduling tool so Vela can book appointments" : "Pro plan feature — let Vela schedule appointments for your customers"}>
+                {currentPlan === "pro" ? (
+                  <BookingSettings businessId={businessId} apiUrl={API} />
+                ) : (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <span style={{ fontSize: "28px", display: "block", marginBottom: "10px" }}>📅</span>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Appointment Booking — Pro Plan Feature</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                      Connect your Calendly, Acuity, or any scheduling link. Vela will direct customers to book appointments directly during chat and phone conversations.
+                    </div>
+                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                      Upgrade to Pro — $199/mo
+                    </a>
+                  </div>
+                )}
+              </Section>
+
               {/* Widget Branding — Pro Only */}
               <Section title="Widget Branding" subtitle={currentPlan === "pro" ? "Customize how your chatbot looks on your website" : "Pro plan feature — remove FrontdeskReply branding and customize your chatbot"}>
                 {currentPlan === "pro" ? (
@@ -826,6 +844,93 @@ function FAQEditor({ faq, onChange, onSave, onCancel, isNew }: {
         <button onClick={onCancel} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-subtle)", borderRadius: "7px", padding: "8px 14px", fontSize: "12.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
           Cancel
         </button>
+      </div>
+    </div>
+  );
+}
+
+function BookingSettings({ businessId, apiUrl }: { businessId: string; apiUrl: string }) {
+  const [bookingUrl, setBookingUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/settings/booking?business_id=${businessId}`)
+      .then(r => r.json())
+      .then(d => { if (d.booking_url) setBookingUrl(d.booking_url); setLoaded(true); })
+      .catch(() => setLoaded(true));
+  }, [businessId, apiUrl]);
+
+  async function saveBooking() {
+    setSaving(true);
+    try {
+      await fetch(`${apiUrl}/settings/booking?business_id=${businessId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ booking_url: bookingUrl }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
+  }
+
+  if (!loaded) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+      {bookingUrl ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "10px" }}>
+          <span style={{ fontSize: "20px" }}>&#9989;</span>
+          <div>
+            <div style={{ fontSize: "13px", fontWeight: "600", color: "var(--green)" }}>Booking link connected</div>
+            <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Vela will direct customers to book appointments during conversations.</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.12)", borderRadius: "10px" }}>
+          <span style={{ fontSize: "20px" }}>&#128197;</span>
+          <div>
+            <div style={{ fontSize: "13px", fontWeight: "600", color: "var(--accent)" }}>No booking link configured</div>
+            <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Add your Calendly, Acuity, or scheduling page URL below.</div>
+          </div>
+        </div>
+      )}
+      <div>
+        <label style={{ display: "block", fontSize: "11.5px", fontWeight: "500", color: "var(--text-muted)", marginBottom: "6px" }}>Booking / Scheduling URL</label>
+        <input
+          type="url"
+          value={bookingUrl}
+          onChange={e => setBookingUrl(e.target.value)}
+          placeholder="https://calendly.com/your-business/appointment"
+          style={{ width: "100%", padding: "9px 12px", background: "var(--bg-input)", border: "1px solid var(--border-subtle)", borderRadius: "8px", fontSize: "13px", color: "var(--text-primary)", outline: "none", fontFamily: "inherit" }}
+        />
+        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+          Works with Calendly, Acuity Scheduling, Square Appointments, or any URL where customers can book.
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {[
+          { icon: "&#128172;", label: "Chat", sub: "Vela shares the booking link when visitors want to schedule" },
+          { icon: "&#128222;", label: "Phone", sub: "Vela tells callers she will text them the booking link after the call" },
+          { icon: "&#128203;", label: "Lead Tracking", sub: "Booking requests are tracked in your conversation history" },
+        ].map(item => (
+          <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "8px 12px", borderRadius: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)" }}>
+            <span style={{ fontSize: "14px", flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: item.icon }} />
+            <div>
+              <div style={{ fontSize: "12px", fontWeight: "500", color: "var(--text-primary)" }}>{item.label}</div>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{item.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <button onClick={saveBooking} disabled={saving} style={{
+          background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", borderRadius: "9px",
+          padding: "10px 24px", fontSize: "13.5px", fontWeight: "600", color: "#fff", cursor: "pointer",
+          opacity: saving ? 0.7 : 1,
+        }}>{saving ? "Saving..." : "Save Booking Link"}</button>
+        {saved && <span style={{ fontSize: "13px", color: "var(--green)" }}>&#10003; Saved</span>}
       </div>
     </div>
   );
