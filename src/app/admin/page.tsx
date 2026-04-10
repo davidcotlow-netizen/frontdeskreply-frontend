@@ -25,6 +25,8 @@ interface Client {
   faq_count: number;
   last_active: string | null;
   created_at: string;
+  billing_renewal: number | null;
+  stripe_status: string;
 }
 
 const PLAN_COLORS: Record<string, { bg: string; color: string }> = {
@@ -140,11 +142,11 @@ export default function AdminPage() {
       {/* Client table */}
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "1.8fr 1.8fr 0.7fr 0.5fr 0.7fr 0.7fr 1.2fr 1fr",
+          display: "grid", gridTemplateColumns: "1.6fr 1.6fr 0.6fr 0.4fr 0.5fr 0.5fr 1fr 0.9fr 0.9fr",
           padding: "10px 18px", borderBottom: "1px solid var(--border-subtle)",
           background: "rgba(255,255,255,0.02)",
         }}>
-          {["Business", "Contact", "Plan", "FAQs", "Chats", "Calls", "Voice Min", "Last Active"].map(h => (
+          {["Business", "Contact", "Plan", "FAQs", "Chats", "Calls", "Voice Min", "Billing", "Last Active"].map(h => (
             <div key={h} style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
           ))}
         </div>
@@ -160,7 +162,7 @@ export default function AdminPage() {
 
           return (
             <div key={client.id} style={{
-              display: "grid", gridTemplateColumns: "1.8fr 1.8fr 0.7fr 0.5fr 0.7fr 0.7fr 1.2fr 1fr",
+              display: "grid", gridTemplateColumns: "1.6fr 1.6fr 0.6fr 0.4fr 0.5fr 0.5fr 1fr 0.9fr 0.9fr",
               padding: "12px 18px", alignItems: "center",
               borderBottom: idx < filtered.length - 1 ? "1px solid var(--border-subtle)" : "none",
             }}>
@@ -224,8 +226,24 @@ export default function AdminPage() {
                 )}
               </div>
 
+              {/* Billing */}
+              <div>
+                {client.billing_renewal ? (
+                  <>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                      {new Date(client.billing_renewal * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </div>
+                    <div style={{ fontSize: 10, color: client.stripe_status === "active" ? "#10b981" : "#f59e0b" }}>
+                      {client.stripe_status === "active" ? "Active" : client.stripe_status}
+                    </div>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>Test</span>
+                )}
+              </div>
+
               {/* Last Active */}
-              <div style={{ fontSize: 12, color: client.last_active ? "var(--text-secondary)" : "var(--text-muted)" }}>
+              <div style={{ fontSize: 11, color: client.last_active ? "var(--text-secondary)" : "var(--text-muted)" }}>
                 {client.last_active ? new Date(client.last_active).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never"}
               </div>
             </div>
