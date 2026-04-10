@@ -49,6 +49,7 @@ const PLANS = [
       "Everything in Growth",
       "Vela Voice AI \u2014 200 min/mo included ($0.20/min after)",
       "Multi-language support \u2014 chat + voice in any language",
+      "WhatsApp integration \u2014 Vela answers WhatsApp messages",
       "Weekly email reports (automated)",
       "White-label widget \u2014 custom name, colors, no branding",
       "Appointment booking \u2014 Calendly / scheduling integration",

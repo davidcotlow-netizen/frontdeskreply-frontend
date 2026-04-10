@@ -718,6 +718,55 @@ export default function SettingsPage() {
                 )}
               </Section>
 
+              {/* WhatsApp Integration — Pro Only */}
+              <Section title="WhatsApp Integration" subtitle={currentPlan === "pro" ? "Vela answers WhatsApp messages using your FAQs" : "Pro plan feature — Vela responds to WhatsApp messages automatically"}>
+                {currentPlan === "pro" ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px", background: "rgba(37,211,102,0.08)", border: "1px solid rgba(37,211,102,0.2)", borderRadius: "10px" }}>
+                      <span style={{ fontSize: "24px" }}>💬</span>
+                      <div>
+                        <div style={{ fontSize: "14px", fontWeight: "600", color: "#25D366" }}>WhatsApp Ready</div>
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Configure your Twilio WhatsApp number to connect Vela.</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.7, padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)", borderRadius: "8px" }}>
+                      <strong style={{ color: "var(--text-secondary)" }}>Setup steps:</strong>
+                      <br />1. In Twilio Console, enable WhatsApp on your Twilio number
+                      <br />2. Complete Meta Business Verification (required by WhatsApp)
+                      <br />3. Set the WhatsApp webhook URL to: <code style={{ color: "var(--accent)", fontSize: "11px" }}>https://api.frontdeskreply.com/api/v1/whatsapp/inbound</code>
+                      <br />4. Customers message your number on WhatsApp → Vela responds instantly
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {[
+                        { icon: "💬", label: "Same Vela AI", sub: "Uses your FAQs — same answers as chat and voice" },
+                        { icon: "📥", label: "Lead Capture", sub: "WhatsApp contacts saved to your Lead Database" },
+                        { icon: "📝", label: "Conversation History", sub: "All WhatsApp conversations saved to Past Conversations" },
+                        { icon: "🌍", label: "Multi-Language", sub: "Vela responds in whatever language the customer writes" },
+                      ].map(item => (
+                        <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "8px 12px", borderRadius: "8px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)" }}>
+                          <span style={{ fontSize: "14px", flexShrink: 0 }}>{item.icon}</span>
+                          <div>
+                            <div style={{ fontSize: "12px", fontWeight: "500", color: "var(--text-primary)" }}>{item.label}</div>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{item.sub}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <span style={{ fontSize: "28px", display: "block", marginBottom: "10px" }}>💬</span>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>WhatsApp Integration — Pro Plan Feature</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                      Vela can respond to WhatsApp messages using the same FAQs and personality. Customers message your number on WhatsApp and get instant AI answers.
+                    </div>
+                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                      Upgrade to Pro — $199/mo
+                    </a>
+                  </div>
+                )}
+              </Section>
+
               {/* Appointment Booking — Pro Only */}
               <Section title="Appointment Booking" subtitle={currentPlan === "pro" ? "Connect your scheduling tool so Vela can book appointments" : "Pro plan feature — let Vela schedule appointments for your customers"}>
                 {currentPlan === "pro" ? (
