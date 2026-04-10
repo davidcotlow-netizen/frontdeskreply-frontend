@@ -51,6 +51,11 @@
   var isConnected = false;
   var aiExchangeCount = 0;
   var currentAiEl = null;
+  var aiChunkBuffer = "";
+  var aiTypingActive = false;
+  var aiStreamDone = false;
+  var aiFirstChunk = true;
+  var aiCharIndex = 0;
   var reconnectAttempts = 0;
   var reconnectTimer = null;
   var visitorName = "";
@@ -592,16 +597,23 @@
         break;
 
       case "ai_chunk":
-        removeTyping();
-        if (!currentAiEl) {
-          currentAiEl = addMessage("", "ai");
+        aiChunkBuffer += data.content;
+        if (!aiTypingActive) {
+          aiTypingActive = true;
+          // Small delay before starting to "type" — feels like reading then responding
+          setTimeout(function() {
+            removeTyping();
+            if (!currentAiEl) {
+              currentAiEl = addMessage("", "ai");
+            }
+            typeNextChar();
+          }, aiFirstChunk ? 600 : 0);
+          aiFirstChunk = false;
         }
-        currentAiEl.textContent += data.content;
-        scrollToBottom();
         break;
 
       case "ai_done":
-        currentAiEl = null;
+        aiStreamDone = true;
         break;
 
       case "human_message":
@@ -661,6 +673,38 @@
     messagesEl.appendChild(div);
     scrollToBottom();
     return div;
+  }
+
+  function typeNextChar() {
+    if (!currentAiEl) return;
+    if (aiCharIndex < aiChunkBuffer.length) {
+      // Type 1-3 characters at a time for natural feel
+      var charsToAdd = Math.min(Math.floor(Math.random() * 3) + 1, aiChunkBuffer.length - aiCharIndex);
+      currentAiEl.textContent += aiChunkBuffer.substring(aiCharIndex, aiCharIndex + charsToAdd);
+      aiCharIndex += charsToAdd;
+      scrollToBottom();
+      // Vary speed: faster mid-word, slower at spaces/punctuation
+      var nextChar = aiChunkBuffer[aiCharIndex] || "";
+      var delay = 18 + Math.random() * 22; // 18-40ms base
+      if (nextChar === " " || nextChar === "." || nextChar === "!" || nextChar === "?" || nextChar === ",") {
+        delay += 30 + Math.random() * 40; // pause at word boundaries
+      }
+      if (nextChar === "\n") {
+        delay += 80; // longer pause at line breaks
+      }
+      setTimeout(typeNextChar, delay);
+    } else if (!aiStreamDone) {
+      // Buffer empty but stream still going — wait for more chunks
+      setTimeout(typeNextChar, 50);
+    } else {
+      // All done — reset state
+      currentAiEl = null;
+      aiChunkBuffer = "";
+      aiTypingActive = false;
+      aiStreamDone = false;
+      aiFirstChunk = true;
+      aiCharIndex = 0;
+    }
   }
 
   function showTyping() {
