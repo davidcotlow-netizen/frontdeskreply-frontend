@@ -56,6 +56,7 @@
   var aiStreamDone = false;
   var aiFirstChunk = true;
   var aiCharIndex = 0;
+  var userClosedWidget = false;
   var reconnectAttempts = 0;
   var reconnectTimer = null;
   var visitorName = "";
@@ -454,8 +455,14 @@
       win.classList.add("fdr-visible");
       fab.classList.add("fdr-open");
       fab.querySelector(".fdr-icon").textContent = "✕";
-      // If already chatting, focus input
-      if (isConnected) {
+      // If user previously closed, reconnect
+      if (userClosedWidget) {
+        userClosedWidget = false;
+        aiExchangeCount = 0;
+        reconnectAttempts = 0;
+        connectWebSocket();
+        msgInput.focus();
+      } else if (isConnected) {
         msgInput.focus();
       } else if (visitorName) {
         // Returning visitor — skip prechat
@@ -468,6 +475,11 @@
       win.classList.remove("fdr-visible");
       fab.classList.remove("fdr-open");
       fab.querySelector(".fdr-icon").textContent = "💬";
+      // Close WebSocket so server sends engagement notification
+      if (ws && ws.readyState === WebSocket.OPEN && aiExchangeCount > 0) {
+        userClosedWidget = true;
+        ws.close(1000, "visitor_closed");
+      }
     }
   }
 
@@ -552,8 +564,8 @@
         return;
       }
 
-      // Auto-reconnect with exponential backoff
-      if (isOpen || sessionId) {
+      // Auto-reconnect with exponential backoff (but not if user intentionally closed)
+      if (!userClosedWidget && (isOpen || sessionId)) {
         scheduleReconnect();
       }
     };
@@ -614,6 +626,7 @@
 
       case "ai_done":
         aiStreamDone = true;
+        aiExchangeCount++;
         break;
 
       case "human_message":
