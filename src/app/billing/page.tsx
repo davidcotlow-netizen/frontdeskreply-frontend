@@ -173,7 +173,7 @@ export default function BillingPage() {
   const usagePct = Math.min((usedCount / limitCount) * 100, 100);
 
   return (
-    <div style={{ padding: "32px 36px", maxWidth: "960px" }}>
+    <div style={{ padding: "32px 36px", maxWidth: "1400px" }}>
 
       {/* Header */}
       <div className="fade-in" style={{ marginBottom: "28px" }}>
