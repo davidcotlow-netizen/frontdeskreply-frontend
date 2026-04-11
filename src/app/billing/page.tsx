@@ -255,7 +255,7 @@ export default function BillingPage() {
       )}
 
       {/* Plan Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "14px" }}>
         {PLANS.map((p, i) => {
           const isCurrent = p.tier === currentTier;
           return (
