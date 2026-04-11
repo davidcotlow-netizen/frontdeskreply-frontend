@@ -117,7 +117,7 @@ export default function DashboardPage() {
     : `${chatCount} conversation${chatCount > 1 ? "s" : ""} today with ${totalMessages} messages exchanged.`;
 
   return (
-    <div style={{ padding: "32px 36px", maxWidth: "1100px" }}>
+    <div style={{ padding: "32px 36px", maxWidth: "1400px" }}>
 
       {/* Header */}
       <div className="fade-in" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "32px" }}>

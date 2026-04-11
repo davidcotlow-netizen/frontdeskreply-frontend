@@ -272,7 +272,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div style={{ padding: "32px 36px", maxWidth: "860px" }}>
+    <div style={{ padding: "32px 36px", maxWidth: "1400px" }}>
 
       {/* Header */}
       <div className="fade-in" style={{ marginBottom: "28px" }}>

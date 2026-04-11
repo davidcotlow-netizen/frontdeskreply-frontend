@@ -214,7 +214,7 @@ export default function AnalyticsPage() {
   ];
 
   return (
-    <div style={{ padding: "32px 28px", maxWidth: 1000, margin: "0 auto" }}>
+    <div style={{ padding: "32px 28px", maxWidth: 1400, margin: "0 auto" }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>

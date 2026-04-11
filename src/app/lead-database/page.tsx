@@ -453,7 +453,7 @@ export default function LeadDatabasePage() {
   }).length;
 
   return (
-    <div style={{ padding: "32px 28px", maxWidth: 1040, margin: "0 auto" }}>
+    <div style={{ padding: "32px 28px", maxWidth: 1400, margin: "0 auto" }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
