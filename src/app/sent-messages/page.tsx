@@ -305,6 +305,19 @@ export default function PastConversationsPage() {
                         </div>
                       ))}
                     </div>
+                    {call.recording_url && (
+                      <div style={{ marginBottom: 18 }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Call Recording</div>
+                        <audio
+                          controls
+                          src={call.recording_url}
+                          style={{
+                            width: "100%", height: 40, borderRadius: 8,
+                            outline: "none", accentColor: "#8b5cf6",
+                          }}
+                        />
+                      </div>
+                    )}
                     <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Call Transcript</div>
                     <div style={{ maxHeight: 400, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, padding: "12px", background: "rgba(0,0,0,0.15)", borderRadius: 10 }}>
                       {(call.transcripts || []).map((t: any, i: number) => (
