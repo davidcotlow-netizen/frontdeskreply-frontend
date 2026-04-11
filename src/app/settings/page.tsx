@@ -797,7 +797,7 @@ export default function SettingsPage() {
                       Vela can respond to WhatsApp messages using the same FAQs and personality. Customers message your number on WhatsApp and get instant AI answers.
                     </div>
                     <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
-                      Upgrade to Pro — $199/mo
+                      Upgrade to Enterprise — $399/mo
                     </a>
                   </div>
                 )}
