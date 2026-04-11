@@ -88,7 +88,7 @@ export default function AdminPage() {
   const totalMinutes = clients.reduce((s, c) => s + c.call_minutes_used, 0);
 
   return (
-    <div style={{ padding: "32px 36px", maxWidth: 1200 }}>
+    <div style={{ padding: "32px 36px", maxWidth: 1400 }}>
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
