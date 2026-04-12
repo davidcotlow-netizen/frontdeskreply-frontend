@@ -98,53 +98,78 @@ export default function SettingsPage() {
   }
 
   function showVoiceSync(data: any) {
-    if (data?.voice_sync?.status === "synced") {
-      setSyncResult({ status: "synced", faq_count: data.voice_sync.faq_count });
-      setTimeout(() => setSyncResult(null), 3000);
+    const sync = data?.voice_sync;
+    if (sync?.status === "synced") {
+      setSyncResult({ status: "synced", faq_count: sync.faq_count });
+    } else if (sync?.status === "error") {
+      setSyncResult({ status: "error" });
+    } else if (sync?.status === "skipped") {
+      // No voice channel — no sync needed, don't show anything
+      return;
     }
+    setTimeout(() => setSyncResult(null), 4000);
   }
 
   async function saveFaq(faq: FAQ) {
-    if (faq.id) {
-      const res = await fetch(`${API}/settings/faqs/${faq.id}?business_id=${businessId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(faq),
-      });
-      const data = await res.json();
-      setFaqs(faqs.map(f => f.id === faq.id ? faq : f));
-      showVoiceSync(data);
-    } else {
-      const res = await fetch(`${API}/settings/faqs?business_id=${businessId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(faq),
-      });
-      const data = await res.json();
-      setFaqs([...faqs, data.faq]);
-      setNewFaq(null);
-      showVoiceSync(data);
+    try {
+      if (faq.id) {
+        const res = await fetch(`${API}/settings/faqs/${faq.id}?business_id=${businessId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(faq),
+        });
+        if (!res.ok) { setSyncResult({ status: "error" }); setTimeout(() => setSyncResult(null), 4000); return; }
+        const data = await res.json();
+        setFaqs(faqs.map(f => f.id === faq.id ? faq : f));
+        showVoiceSync(data);
+      } else {
+        const res = await fetch(`${API}/settings/faqs?business_id=${businessId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(faq),
+        });
+        if (!res.ok) { setSyncResult({ status: "error" }); setTimeout(() => setSyncResult(null), 4000); return; }
+        const data = await res.json();
+        setFaqs([...faqs, data.faq]);
+        setNewFaq(null);
+        showVoiceSync(data);
+      }
+      setEditingFaqId(null);
+    } catch {
+      setSyncResult({ status: "error" });
+      setTimeout(() => setSyncResult(null), 4000);
     }
-    setEditingFaqId(null);
   }
 
   async function deleteFaq(faqId: string) {
-    const res = await fetch(`${API}/settings/faqs/${faqId}?business_id=${businessId}`, { method: "DELETE" });
-    const data = await res.json();
-    setFaqs(faqs.filter(f => f.id !== faqId));
-    showVoiceSync(data);
+    try {
+      const res = await fetch(`${API}/settings/faqs/${faqId}?business_id=${businessId}`, { method: "DELETE" });
+      if (!res.ok) { setSyncResult({ status: "error" }); setTimeout(() => setSyncResult(null), 4000); return; }
+      const data = await res.json();
+      setFaqs(faqs.filter(f => f.id !== faqId));
+      showVoiceSync(data);
+    } catch {
+      setSyncResult({ status: "error" });
+      setTimeout(() => setSyncResult(null), 4000);
+    }
   }
 
   async function toggleFaq(faq: FAQ) {
-    const updated = { ...faq, active: !faq.active };
-    const res = await fetch(`${API}/settings/faqs/${faq.id}?business_id=${businessId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    });
-    const data = await res.json();
-    setFaqs(faqs.map(f => f.id === faq.id ? updated : f));
-    showVoiceSync(data);
+    try {
+      const updated = { ...faq, active: !faq.active };
+      const res = await fetch(`${API}/settings/faqs/${faq.id}?business_id=${businessId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      if (!res.ok) { setSyncResult({ status: "error" }); setTimeout(() => setSyncResult(null), 4000); return; }
+      const data = await res.json();
+      setFaqs(faqs.map(f => f.id === faq.id ? updated : f));
+      showVoiceSync(data);
+    } catch {
+      setSyncResult({ status: "error" });
+      setTimeout(() => setSyncResult(null), 4000);
+    }
   }
 
   async function syncVoiceAI() {
@@ -273,24 +298,31 @@ export default function SettingsPage() {
         }));
       }
       if (importData.faqs?.length) {
-        const results = await Promise.all(
-          importData.faqs
-            .filter((f: any) => f.question)
-            .map((f: any) =>
-              fetch(`${API}/settings/faqs?business_id=${businessId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  question: f.question,
-                  answer: f.answer || "",
-                  category: "general",
-                  active: true,
-                }),
-              }).then(r => r.json())
-            )
-        );
-        const newFaqs = results.map((r: any) => r.faq).filter(Boolean);
-        setFaqs(prev => [...prev, ...newFaqs]);
+        const faqsToImport = importData.faqs
+          .filter((f: any) => f.question)
+          .map((f: any) => ({
+            question: f.question,
+            answer: f.answer || "",
+            category: f.category || "general",
+            active: f.active !== false,
+          }));
+
+        const res = await fetch(`${API}/settings/faqs/bulk?business_id=${businessId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ faqs: faqsToImport, replace: false }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          showVoiceSync(data);
+          // Reload FAQs from server to get full list with IDs
+          const refreshed = await fetch(`${API}/settings/faqs?business_id=${businessId}`).then(r => r.json());
+          if (refreshed?.faqs) setFaqs(refreshed.faqs);
+        } else {
+          setSyncResult({ status: "error" });
+          setTimeout(() => setSyncResult(null), 4000);
+        }
       }
       setImportPreview(false);
       setImportData(null);
