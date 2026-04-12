@@ -61,6 +61,10 @@ export default function SettingsPage() {
   const [importPreview, setImportPreview] = useState(false);
   const [importing, setImporting] = useState(false);
 
+  // Voice AI sync state
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ status: string; faq_count?: number } | null>(null);
+
   useEffect(() => {
     if (!isLoaded) return;
     Promise.all([
@@ -93,14 +97,23 @@ export default function SettingsPage() {
     }
   }
 
+  function showVoiceSync(data: any) {
+    if (data?.voice_sync?.status === "synced") {
+      setSyncResult({ status: "synced", faq_count: data.voice_sync.faq_count });
+      setTimeout(() => setSyncResult(null), 3000);
+    }
+  }
+
   async function saveFaq(faq: FAQ) {
     if (faq.id) {
-      await fetch(`${API}/settings/faqs/${faq.id}?business_id=${businessId}`, {
+      const res = await fetch(`${API}/settings/faqs/${faq.id}?business_id=${businessId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(faq),
       });
+      const data = await res.json();
       setFaqs(faqs.map(f => f.id === faq.id ? faq : f));
+      showVoiceSync(data);
     } else {
       const res = await fetch(`${API}/settings/faqs?business_id=${businessId}`, {
         method: "POST",
@@ -110,23 +123,47 @@ export default function SettingsPage() {
       const data = await res.json();
       setFaqs([...faqs, data.faq]);
       setNewFaq(null);
+      showVoiceSync(data);
     }
     setEditingFaqId(null);
   }
 
   async function deleteFaq(faqId: string) {
-    await fetch(`${API}/settings/faqs/${faqId}?business_id=${businessId}`, { method: "DELETE" });
+    const res = await fetch(`${API}/settings/faqs/${faqId}?business_id=${businessId}`, { method: "DELETE" });
+    const data = await res.json();
     setFaqs(faqs.filter(f => f.id !== faqId));
+    showVoiceSync(data);
   }
 
   async function toggleFaq(faq: FAQ) {
     const updated = { ...faq, active: !faq.active };
-    await fetch(`${API}/settings/faqs/${faq.id}?business_id=${businessId}`, {
+    const res = await fetch(`${API}/settings/faqs/${faq.id}?business_id=${businessId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
     });
+    const data = await res.json();
     setFaqs(faqs.map(f => f.id === faq.id ? updated : f));
+    showVoiceSync(data);
+  }
+
+  async function syncVoiceAI() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch(`${API}/settings/faqs/sync-voice?business_id=${businessId}`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setSyncResult({ status: "synced", faq_count: data.faq_count });
+      } else {
+        setSyncResult({ status: "error" });
+      }
+    } catch {
+      setSyncResult({ status: "error" });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncResult(null), 4000);
+    }
   }
 
   function exportFaqs() {
@@ -449,10 +486,42 @@ export default function SettingsPage() {
               )}
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
-                <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-                  {faqs.length} FAQ{faqs.length !== 1 ? "s" : ""} · Vela uses these to auto-answer visitor questions
-                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>
+                    {faqs.length} FAQ{faqs.length !== 1 ? "s" : ""} · Vela uses these to auto-answer visitor questions
+                  </p>
+                  {syncResult && (
+                    <span style={{
+                      fontSize: "12px", fontWeight: "500",
+                      color: syncResult.status === "synced" ? "var(--green)" : "rgba(239,68,68,0.8)",
+                      display: "flex", alignItems: "center", gap: "4px",
+                    }}>
+                      {syncResult.status === "synced"
+                        ? `Voice AI synced (${syncResult.faq_count} FAQs live)`
+                        : "Sync failed — check Retell config"}
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: "flex", gap: "6px" }}>
+                  <button onClick={syncVoiceAI} disabled={syncing || faqs.length === 0} style={{
+                    background: syncing ? "rgba(99,102,241,0.15)" : "rgba(99,102,241,0.1)",
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    borderRadius: "8px", padding: "7px 14px", fontSize: "12.5px",
+                    color: "rgba(129,140,248,1)", fontWeight: "500", cursor: syncing ? "wait" : "pointer",
+                    display: "flex", alignItems: "center", gap: "5px",
+                    opacity: syncing ? 0.7 : 1, transition: "opacity 0.15s",
+                  }}>
+                    <span style={{
+                      display: "inline-block", width: "13px", height: "13px",
+                      ...(syncing ? { animation: "spin 1s linear infinite" } : {}),
+                    }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 4v6h6" /><path d="M23 20v-6h-6" />
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+                      </svg>
+                    </span>
+                    {syncing ? "Syncing..." : "Push to Voice AI"}
+                  </button>
                   <button onClick={exportFaqs} disabled={faqs.length === 0} style={{
                     background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-subtle)",
                     borderRadius: "8px", padding: "7px 14px", fontSize: "12.5px",
