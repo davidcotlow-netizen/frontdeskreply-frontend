@@ -53,7 +53,7 @@ export default function SettingsPage() {
   const [provisionError, setProvisionError] = useState("");
 
   // Notification preferences
-  const [notifPrefs, setNotifPrefs] = useState({ notify_on_chat: true, notify_on_call: true, notify_on_sms: true });
+  const [notifPrefs, setNotifPrefs] = useState({ notify_on_chat: true, notify_on_call: true, notify_on_sms: true, weekly_report_enabled: true });
   const [notifSaving, setNotifSaving] = useState(false);
 
   // Import feature state
