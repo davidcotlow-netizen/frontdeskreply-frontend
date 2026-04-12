@@ -315,7 +315,7 @@ export default function BillingPage() {
 
       {/* Footer note */}
       <div style={{ marginTop: "20px", fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>
-        All plans include a 14-day free trial · Cancel anytime · Powered by Stripe
+        Starter plan includes a 7-day free trial · Cancel anytime · Powered by Stripe
       </div>
 
       {/* Payment History */}
