@@ -26,7 +26,7 @@ type FAQ = {
   active: boolean;
 };
 
-type Tab = "profile" | "faqs" | "automation" | "notifications";
+type Tab = "profile" | "faqs" | "automation" | "notifications" | "email";
 
 export default function SettingsPage() {
   const { user, isLoaded } = useUser();
@@ -61,6 +61,13 @@ export default function SettingsPage() {
   const [importPreview, setImportPreview] = useState(false);
   const [importing, setImporting] = useState(false);
 
+  // Email auto-reply state
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [emailAddress, setEmailAddress] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailTestSent, setEmailTestSent] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
+
   // Voice AI sync state
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ status: string; faq_count?: number } | null>(null);
@@ -73,12 +80,14 @@ export default function SettingsPage() {
       fetch(`${API}/billing/plan?business_id=${businessId}`).then(r => r.json()),
       fetch(`${API}/voice/status?business_id=${businessId}`).then(r => r.json()),
       fetch(`${API}/settings/notifications?business_id=${businessId}`).then(r => r.json()).catch(() => ({})),
-    ]).then(([p, f, plan, voice, notif]) => {
+      fetch(`${API}/settings/email-status?business_id=${businessId}`).then(r => r.json()).catch(() => ({})),
+    ]).then(([p, f, plan, voice, notif, emailSt]) => {
       if (p && !p.detail) setProfile({ ...profile, ...p });
       if (f?.faqs) setFaqs(f.faqs);
       if (plan) setCurrentPlan(plan.plan_tier || "starter");
       if (voice?.enabled) { setVoiceEnabled(true); setVoicePhone(voice.phone_number || ""); }
       if (notif && !notif.detail) setNotifPrefs({ ...notifPrefs, ...notif });
+      if (emailSt?.enabled) { setEmailEnabled(true); setEmailAddress(emailSt.forwarding_address || ""); }
     }).finally(() => setLoading(false));
   }, [isLoaded, businessId]);
 
@@ -338,6 +347,7 @@ export default function SettingsPage() {
     { id: "faqs", label: "FAQ Knowledge Base", icon: "💬" },
     { id: "automation", label: "Chatbot Settings", icon: "🤖" },
     { id: "notifications", label: "Notifications", icon: "🔔" },
+    { id: "email", label: "Email Auto-Reply", icon: "✉" },
   ];
 
   return (
@@ -381,6 +391,41 @@ export default function SettingsPage() {
           {/* ── PROFILE TAB ── */}
           {tab === "profile" && (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+              <Section title="Your Account" subtitle="Account details for reference and support">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Login Email</div>
+                    <div style={{ fontSize: "13.5px", color: "var(--text-primary)", fontWeight: "500" }}>
+                      {user?.primaryEmailAddress?.emailAddress || "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Business ID</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontFamily: "var(--font-mono, monospace)" }}>
+                        {businessId}
+                      </div>
+                      <button onClick={() => { navigator.clipboard.writeText(businessId); }} style={{
+                        background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-subtle)",
+                        borderRadius: "5px", padding: "2px 8px", fontSize: "10px", color: "var(--text-muted)", cursor: "pointer",
+                      }}>Copy</button>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Plan</div>
+                    <div style={{ fontSize: "13.5px", color: "var(--accent)", fontWeight: "500", textTransform: "capitalize" }}>
+                      {currentPlan}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Account Name</div>
+                    <div style={{ fontSize: "13.5px", color: "var(--text-primary)", fontWeight: "500" }}>
+                      {user?.fullName || user?.firstName || "—"}
+                    </div>
+                  </div>
+                </div>
+              </Section>
 
               <Section title="Business Info" subtitle="Your chatbot uses these details when responding to visitors">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
@@ -998,6 +1043,149 @@ export default function SettingsPage() {
               </Section>
               {notifSaving && (
                 <div style={{ fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>Saving...</div>
+              )}
+            </div>
+          )}
+
+          {/* ── EMAIL AUTO-REPLY TAB ── */}
+          {tab === "email" && (
+            <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {!["growth", "pro", "enterprise"].includes(currentPlan) ? (
+                <Section title="Email Auto-Reply" subtitle="Vela responds to customer emails using your FAQ knowledge base">
+                  <div style={{ padding: "30px 20px", textAlign: "center" }}>
+                    <div style={{ fontSize: "36px", marginBottom: "12px" }}>✉</div>
+                    <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>
+                      Email Auto-Reply — Growth Plan Feature
+                    </div>
+                    <div style={{ fontSize: "12.5px", color: "var(--text-muted)", marginBottom: "16px", maxWidth: "400px", margin: "0 auto 16px" }}>
+                      Vela automatically replies to inbound customer emails using your FAQ knowledge base — just like your chatbot and phone AI.
+                    </div>
+                    <a href="/billing" style={{
+                      display: "inline-block", padding: "10px 22px", borderRadius: "9px",
+                      background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff",
+                      fontWeight: "600", fontSize: "13px", textDecoration: "none",
+                      boxShadow: "0 2px 8px rgba(249,115,22,0.3)",
+                    }}>Upgrade to Growth — $99/mo</a>
+                  </div>
+                </Section>
+              ) : !emailEnabled ? (
+                <Section title="Email Auto-Reply" subtitle="Vela responds to customer emails using your FAQ knowledge base">
+                  <div style={{ padding: "30px 20px", textAlign: "center" }}>
+                    <div style={{ fontSize: "36px", marginBottom: "12px" }}>✉</div>
+                    <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>
+                      Enable Email Auto-Reply
+                    </div>
+                    <div style={{ fontSize: "12.5px", color: "var(--text-muted)", marginBottom: "20px", maxWidth: "420px", margin: "0 auto 20px" }}>
+                      When a customer emails you, Vela will automatically respond using your FAQ knowledge base — the same answers your chatbot and phone AI use.
+                    </div>
+                    <button onClick={async () => {
+                      setEmailLoading(true);
+                      try {
+                        const res = await fetch(`${API}/settings/email-enable?business_id=${businessId}`, { method: "POST" });
+                        if (res.ok) {
+                          const data = await res.json();
+                          setEmailEnabled(true);
+                          setEmailAddress(data.forwarding_address);
+                        }
+                      } finally { setEmailLoading(false); }
+                    }} disabled={emailLoading} style={{
+                      background: "linear-gradient(135deg, #f97316, #ea580c)",
+                      border: "none", borderRadius: "9px", padding: "12px 28px",
+                      fontSize: "14px", fontWeight: "600", color: "#fff", cursor: emailLoading ? "wait" : "pointer",
+                      opacity: emailLoading ? 0.7 : 1, boxShadow: "0 2px 8px rgba(249,115,22,0.3)",
+                    }}>
+                      {emailLoading ? "Enabling..." : "Enable Email Auto-Reply"}
+                    </button>
+                  </div>
+                </Section>
+              ) : (
+                <>
+                  <Section title="Email Auto-Reply" subtitle="Vela is responding to customer emails using your FAQs">
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "10px", marginBottom: "16px" }}>
+                      <span style={{ color: "var(--green)", fontSize: "14px" }}>&#9679;</span>
+                      <span style={{ fontSize: "13px", fontWeight: "500", color: "var(--green)" }}>Email Auto-Reply Active</span>
+                    </div>
+
+                    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "10px", padding: "16px 18px", marginBottom: "16px" }}>
+                      <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>
+                        Your Forwarding Address
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div style={{ fontSize: "15px", fontWeight: "600", color: "var(--accent)", fontFamily: "var(--font-mono, monospace)", wordBreak: "break-all", flex: 1 }}>
+                          {emailAddress}
+                        </div>
+                        <button onClick={() => {
+                          navigator.clipboard.writeText(emailAddress);
+                          setEmailCopied(true);
+                          setTimeout(() => setEmailCopied(false), 2000);
+                        }} style={{
+                          background: emailCopied ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.06)",
+                          border: `1px solid ${emailCopied ? "rgba(16,185,129,0.3)" : "var(--border-subtle)"}`,
+                          borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "500",
+                          color: emailCopied ? "var(--green)" : "var(--text-secondary)", cursor: "pointer",
+                        }}>
+                          {emailCopied ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="Setup Instructions" subtitle="Forward your business email to the address above">
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "10px", padding: "16px 18px" }}>
+                        <div style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "8px" }}>Gmail</div>
+                        <ol style={{ margin: 0, paddingLeft: "18px", fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                          <li>Open Gmail Settings (gear icon) &rarr; See all settings</li>
+                          <li>Go to <strong>Forwarding and POP/IMAP</strong> tab</li>
+                          <li>Click <strong>Add a forwarding address</strong></li>
+                          <li>Paste: <strong style={{ color: "var(--accent)" }}>{emailAddress}</strong></li>
+                          <li>Confirm the verification email, then select <strong>Forward a copy</strong></li>
+                        </ol>
+                      </div>
+                      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "10px", padding: "16px 18px" }}>
+                        <div style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "8px" }}>Outlook / Microsoft 365</div>
+                        <ol style={{ margin: 0, paddingLeft: "18px", fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                          <li>Go to Settings &rarr; Mail &rarr; <strong>Forwarding</strong></li>
+                          <li>Check <strong>Enable forwarding</strong></li>
+                          <li>Paste: <strong style={{ color: "var(--accent)" }}>{emailAddress}</strong></li>
+                          <li>Check <strong>Keep a copy of forwarded messages</strong></li>
+                          <li>Click <strong>Save</strong></li>
+                        </ol>
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="Test & Manage" subtitle="Verify your setup or disable email auto-reply">
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      <button onClick={async () => {
+                        setEmailLoading(true);
+                        try {
+                          const res = await fetch(`${API}/settings/email-test?business_id=${businessId}`, { method: "POST" });
+                          if (res.ok) { setEmailTestSent(true); setTimeout(() => setEmailTestSent(false), 4000); }
+                        } finally { setEmailLoading(false); }
+                      }} disabled={emailLoading} style={{
+                        background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)",
+                        borderRadius: "8px", padding: "9px 18px", fontSize: "12.5px",
+                        color: "rgba(129,140,248,1)", fontWeight: "500", cursor: emailLoading ? "wait" : "pointer",
+                      }}>
+                        {emailTestSent ? "Test Sent! Check your inbox" : emailLoading ? "Sending..." : "Send Test Email"}
+                      </button>
+                      <button onClick={async () => {
+                        setEmailLoading(true);
+                        try {
+                          const res = await fetch(`${API}/settings/email-disable?business_id=${businessId}`, { method: "POST" });
+                          if (res.ok) { setEmailEnabled(false); setEmailAddress(""); }
+                        } finally { setEmailLoading(false); }
+                      }} disabled={emailLoading} style={{
+                        background: "transparent", border: "1px solid rgba(239,68,68,0.25)",
+                        borderRadius: "8px", padding: "9px 18px", fontSize: "12.5px",
+                        color: "rgba(239,68,68,0.7)", fontWeight: "500", cursor: "pointer",
+                      }}>
+                        Disable Email Auto-Reply
+                      </button>
+                    </div>
+                  </Section>
+                </>
               )}
             </div>
           )}
