@@ -12,7 +12,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider appearance={{ baseTheme: dark }}>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('fdr-theme')||'dark';document.documentElement.setAttribute('data-theme',t)})()` }} />
+        </head>
         <body style={{ backgroundColor: "var(--bg-base)", color: "var(--text-primary)", minHeight: "100vh" }}>
           <LayoutShell>{children}</LayoutShell>
         </body>
