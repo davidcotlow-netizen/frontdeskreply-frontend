@@ -40,6 +40,7 @@
       if (branding.chatbot_name) CONFIG.agentName = branding.chatbot_name;
       if (branding.brand_color) CONFIG.color = branding.brand_color;
       if (branding.show_powered_by === false) CONFIG.hidePoweredBy = true;
+      CONFIG.autoOpenDelay = typeof branding.auto_open_delay === "number" ? branding.auto_open_delay : 15;
       brandingLoaded = true;
     }
   } catch (e) {}
@@ -859,24 +860,27 @@
       setTimeout(function() { if (bubble.parentNode) bubble.remove(); }, 15000);
     }
 
-    // Trigger 1: Time on page (15 seconds)
-    setTimeout(function() {
-      var page = window.location.pathname.toLowerCase();
-      var msg = "Hi there! Looking for information? I can help!";
+    // Trigger 1: Time on page (configurable delay, 0 = disabled)
+    var proDelay = (CONFIG.autoOpenDelay || 0) * 1000;
+    if (proDelay > 0) {
+      setTimeout(function() {
+        var page = window.location.pathname.toLowerCase();
+        var msg = "Hi there! Looking for information? I can help!";
 
-      // Page-specific messages
-      if (page.includes("pricing") || page.includes("price") || page.includes("cost")) {
-        msg = "Have questions about pricing? I can help you find the right plan!";
-      } else if (page.includes("contact") || page.includes("book") || page.includes("schedule")) {
-        msg = "Ready to get started? I can answer any questions!";
-      } else if (page.includes("faq") || page.includes("help") || page.includes("support")) {
-        msg = "Need help finding an answer? Ask me anything!";
-      } else if (page.includes("about")) {
-        msg = "Want to learn more about us? I'm happy to help!";
-      }
+        // Page-specific messages
+        if (page.includes("pricing") || page.includes("price") || page.includes("cost")) {
+          msg = "Have questions about pricing? I can help you find the right plan!";
+        } else if (page.includes("contact") || page.includes("book") || page.includes("schedule")) {
+          msg = "Ready to get started? I can answer any questions!";
+        } else if (page.includes("faq") || page.includes("help") || page.includes("support")) {
+          msg = "Need help finding an answer? Ask me anything!";
+        } else if (page.includes("about")) {
+          msg = "Want to learn more about us? I'm happy to help!";
+        }
 
-      showProactiveMessage(msg);
-    }, 15000);
+        showProactiveMessage(msg);
+      }, proDelay);
+    }
 
     // Trigger 2: Scroll depth (visitor scrolled 60% of page)
     var scrollTriggered = false;

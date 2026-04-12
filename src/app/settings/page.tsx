@@ -68,6 +68,16 @@ export default function SettingsPage() {
   const [emailTestSent, setEmailTestSent] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
 
+  // Proactive chat state
+  const [proactiveDelay, setProactiveDelay] = useState(15);
+  const [proactiveSaving, setProactiveSaving] = useState(false);
+
+  // API keys state
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [newKeyName, setNewKeyName] = useState("Default");
+  const [generatedKey, setGeneratedKey] = useState("");
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
+
   // Voice AI sync state
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ status: string; faq_count?: number } | null>(null);
@@ -88,6 +98,13 @@ export default function SettingsPage() {
       if (voice?.enabled) { setVoiceEnabled(true); setVoicePhone(voice.phone_number || ""); }
       if (notif && !notif.detail) setNotifPrefs({ ...notifPrefs, ...notif });
       if (emailSt?.enabled) { setEmailEnabled(true); setEmailAddress(emailSt.forwarding_address || ""); }
+      // Load proactive config and API keys after initial load
+      fetch(`${API}/settings/proactive-config?business_id=${businessId}`).then(r => r.json()).then(d => {
+        if (d?.auto_open_delay !== undefined) setProactiveDelay(d.auto_open_delay);
+      }).catch(() => {});
+      fetch(`${API}/settings/api-keys?business_id=${businessId}`).then(r => r.json()).then(d => {
+        if (d?.keys) setApiKeys(d.keys);
+      }).catch(() => {});
     }).finally(() => setLoading(false));
   }, [isLoaded, businessId]);
 
@@ -967,6 +984,55 @@ export default function SettingsPage() {
                 )}
               </Section>
 
+              {/* Proactive Chat Triggers — Growth+ */}
+              <Section title="Proactive Chat" subtitle={["growth","pro","enterprise"].includes(currentPlan) ? "Auto-engage visitors after they spend time on your site" : "Growth plan feature — automatically start conversations with website visitors"}>
+                {["growth","pro","enterprise"].includes(currentPlan) ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: "13.5px", fontWeight: "500", color: "var(--text-primary)" }}>Auto-open chat after</div>
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Vela will pop up with a greeting after this delay. Set to 0 to disable.</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <input type="range" min="0" max="60" step="5" value={proactiveDelay}
+                          onChange={e => setProactiveDelay(parseInt(e.target.value))}
+                          style={{ width: "120px", accentColor: "var(--accent)" }} />
+                        <span style={{ fontSize: "14px", fontWeight: "600", color: proactiveDelay > 0 ? "var(--accent)" : "var(--text-muted)", minWidth: "45px" }}>
+                          {proactiveDelay > 0 ? `${proactiveDelay}s` : "Off"}
+                        </span>
+                      </div>
+                    </div>
+                    <button onClick={async () => {
+                      setProactiveSaving(true);
+                      try {
+                        await fetch(`${API}/settings/widget-proactive?business_id=${businessId}`, {
+                          method: "PATCH", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ auto_open_delay: proactiveDelay }),
+                        });
+                      } finally { setProactiveSaving(false); }
+                    }} disabled={proactiveSaving} style={{
+                      background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none",
+                      borderRadius: "8px", padding: "9px 20px", fontSize: "13px", fontWeight: "600",
+                      color: "#fff", cursor: "pointer", alignSelf: "flex-start",
+                      opacity: proactiveSaving ? 0.7 : 1,
+                    }}>
+                      {proactiveSaving ? "Saving..." : "Save Proactive Settings"}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <span style={{ fontSize: "28px", display: "block", marginBottom: "10px" }}>💬</span>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Proactive Chat — Growth Plan Feature</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                      Automatically engage website visitors with a greeting after they spend time on your site. Increase conversations without waiting for them to click.
+                    </div>
+                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                      Upgrade to Growth — $149/mo
+                    </a>
+                  </div>
+                )}
+              </Section>
+
               {/* Widget Branding — Pro Only */}
               <Section title="Widget Branding" subtitle={["pro","enterprise"].includes(currentPlan) ? "Customize how your chatbot looks on your website" : "Pro plan feature — remove FrontdeskReply branding and customize your chatbot"}>
                 {["pro","enterprise"].includes(currentPlan) ? (
@@ -1041,6 +1107,27 @@ export default function SettingsPage() {
                   }}
                 />
               </Section>
+
+              <Section title="Weekly Email Reports" subtitle="Automated weekly performance digest sent every Monday">
+                <NotifRow
+                  label="Send me a weekly email report every Monday"
+                  sub="Receive a digest with your week's chat and call stats, new leads, and top questions asked"
+                  enabled={notifPrefs.weekly_report_enabled}
+                  locked={!["pro", "enterprise"].includes(currentPlan)}
+                  lockedMessage="Upgrade to Pro to enable weekly reports"
+                  onChange={async (val) => {
+                    setNotifPrefs({ ...notifPrefs, weekly_report_enabled: val });
+                    setNotifSaving(true);
+                    try {
+                      await fetch(`${API}/settings/notifications?business_id=${businessId}`, {
+                        method: "PATCH", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ weekly_report_enabled: val }),
+                      });
+                    } finally { setNotifSaving(false); }
+                  }}
+                />
+              </Section>
+
               {notifSaving && (
                 <div style={{ fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>Saving...</div>
               )}
@@ -1187,6 +1274,86 @@ export default function SettingsPage() {
                   </Section>
                 </>
               )}
+
+              {/* API Keys — Enterprise Only */}
+              <Section title="API Keys" subtitle={currentPlan === "enterprise" ? "Generate API keys for programmatic webhook access" : "Enterprise plan feature — authenticate external integrations with API keys"}>
+                {currentPlan === "enterprise" ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", marginBottom: "4px" }}>Key Name</div>
+                        <input value={newKeyName} onChange={e => setNewKeyName(e.target.value)} placeholder="My Integration"
+                          style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border-subtle)", background: "rgba(255,255,255,0.04)", color: "var(--text-primary)", fontSize: "13px" }} />
+                      </div>
+                      <button onClick={async () => {
+                        setApiKeyLoading(true);
+                        try {
+                          const res = await fetch(`${API}/settings/api-keys?business_id=${businessId}`, {
+                            method: "POST", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: newKeyName }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setGeneratedKey(data.key);
+                            setApiKeys(prev => [{ id: data.id, key_prefix: data.key_prefix, name: newKeyName, created_at: new Date().toISOString(), active: true }, ...prev]);
+                            setNewKeyName("Default");
+                          }
+                        } finally { setApiKeyLoading(false); }
+                      }} disabled={apiKeyLoading} style={{
+                        background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", borderRadius: "8px",
+                        padding: "9px 18px", fontSize: "13px", fontWeight: "600", color: "#fff", cursor: "pointer",
+                        whiteSpace: "nowrap", opacity: apiKeyLoading ? 0.7 : 1,
+                      }}>
+                        {apiKeyLoading ? "Generating..." : "Generate Key"}
+                      </button>
+                    </div>
+
+                    {generatedKey && (
+                      <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "10px", padding: "14px 16px" }}>
+                        <div style={{ fontSize: "12px", fontWeight: "600", color: "var(--green)", marginBottom: "6px" }}>New API Key Generated — Copy it now (shown only once)</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <code style={{ flex: 1, fontSize: "12px", color: "var(--text-primary)", fontFamily: "var(--font-mono, monospace)", wordBreak: "break-all", background: "rgba(0,0,0,0.2)", padding: "8px 10px", borderRadius: "6px" }}>{generatedKey}</code>
+                          <button onClick={() => { navigator.clipboard.writeText(generatedKey); }} style={{
+                            background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", borderRadius: "6px",
+                            padding: "6px 12px", fontSize: "11px", color: "var(--text-secondary)", cursor: "pointer",
+                          }}>Copy</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {apiKeys.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {apiKeys.filter(k => k.active).map(key => (
+                          <div key={key.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "8px" }}>
+                            <div>
+                              <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-primary)" }}>{key.name}</div>
+                              <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-mono, monospace)" }}>{key.key_prefix}</div>
+                            </div>
+                            <button onClick={async () => {
+                              await fetch(`${API}/settings/api-keys/${key.id}?business_id=${businessId}`, { method: "DELETE" });
+                              setApiKeys(prev => prev.map(k => k.id === key.id ? { ...k, active: false } : k));
+                            }} style={{
+                              background: "transparent", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "6px",
+                              padding: "5px 12px", fontSize: "11px", color: "rgba(239,68,68,0.6)", cursor: "pointer",
+                            }}>Revoke</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <div style={{ fontSize: "28px", marginBottom: "10px" }}>🔑</div>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>API Keys — Enterprise Plan Feature</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                      Generate API keys to authenticate external integrations and programmatic access to your FrontDeskReply webhooks.
+                    </div>
+                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                      Upgrade to Enterprise — $299/mo
+                    </a>
+                  </div>
+                )}
+              </Section>
             </div>
           )}
         </>
