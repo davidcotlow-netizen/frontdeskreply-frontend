@@ -68,6 +68,11 @@ export default function SettingsPage() {
   const [emailTestSent, setEmailTestSent] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
 
+  // Outbound webhooks state
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSaving, setWebhookSaving] = useState(false);
+  const [webhookSaved, setWebhookSaved] = useState(false);
+
   // Proactive chat state
   const [proactiveDelay, setProactiveDelay] = useState(15);
   const [proactiveSaving, setProactiveSaving] = useState(false);
@@ -104,6 +109,9 @@ export default function SettingsPage() {
       }).catch(() => {});
       fetch(`${API}/settings/api-keys?business_id=${businessId}`).then(r => r.json()).then(d => {
         if (d?.keys) setApiKeys(d.keys);
+      }).catch(() => {});
+      fetch(`${API}/settings/webhooks-config?business_id=${businessId}`).then(r => r.json()).then(d => {
+        if (d?.webhook_url) setWebhookUrl(d.webhook_url);
       }).catch(() => {});
     }).finally(() => setLoading(false));
   }, [isLoaded, businessId]);
@@ -1274,6 +1282,55 @@ export default function SettingsPage() {
                   </Section>
                 </>
               )}
+
+              {/* API Keys — Enterprise Only */}
+              {/* Outbound Webhooks — Growth+ */}
+              <Section title="Outbound Webhooks (Zapier / Make)" subtitle={["growth","pro","enterprise"].includes(currentPlan) ? "Fire events to external services when calls, chats, and leads happen" : "Growth plan feature — connect to Zapier, Make, or any webhook endpoint"}>
+                {["growth","pro","enterprise"].includes(currentPlan) ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div>
+                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", marginBottom: "4px" }}>Webhook URL</div>
+                      <input value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)}
+                        placeholder="https://hooks.zapier.com/hooks/catch/... or https://hook.us1.make.com/..."
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border-subtle)", background: "rgba(255,255,255,0.04)", color: "var(--text-primary)", fontSize: "13px" }} />
+                    </div>
+                    <div style={{ fontSize: "11.5px", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                      Events fired: <strong>call.ended</strong>, <strong>chat.ended</strong>, <strong>lead.created</strong>, <strong>email.received</strong>. Each event sends a JSON payload with the event type, timestamp, and relevant data.
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <button onClick={async () => {
+                        setWebhookSaving(true);
+                        try {
+                          await fetch(`${API}/settings/webhooks-config?business_id=${businessId}`, {
+                            method: "PATCH", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ webhook_url: webhookUrl }),
+                          });
+                          setWebhookSaved(true);
+                          setTimeout(() => setWebhookSaved(false), 3000);
+                        } finally { setWebhookSaving(false); }
+                      }} disabled={webhookSaving} style={{
+                        background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none",
+                        borderRadius: "8px", padding: "9px 20px", fontSize: "13px", fontWeight: "600",
+                        color: "#fff", cursor: "pointer", opacity: webhookSaving ? 0.7 : 1,
+                      }}>
+                        {webhookSaving ? "Saving..." : "Save Webhook URL"}
+                      </button>
+                      {webhookSaved && <span style={{ fontSize: "12px", color: "var(--green)" }}>Saved</span>}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <div style={{ fontSize: "28px", marginBottom: "10px" }}>🔗</div>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", marginBottom: "6px" }}>Outbound Webhooks — Growth Plan Feature</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                      Connect FrontDeskReply to Zapier, Make, or any webhook endpoint. Automatically fire events when calls end, chats finish, or new leads are captured.
+                    </div>
+                    <a href="/billing" style={{ display: "inline-block", padding: "10px 24px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                      Upgrade to Growth — $149/mo
+                    </a>
+                  </div>
+                )}
+              </Section>
 
               {/* API Keys — Enterprise Only */}
               <Section title="API Keys" subtitle={currentPlan === "enterprise" ? "Generate API keys for programmatic webhook access" : "Enterprise plan feature — authenticate external integrations with API keys"}>
