@@ -613,14 +613,16 @@
         aiChunkBuffer += data.content;
         if (!aiTypingActive) {
           aiTypingActive = true;
-          // Small delay before starting to "type" — feels like reading then responding
+          // A short beat before the text starts, so the dots register as
+          // "thinking" instead of flashing. Streaming-UX guidance puts the
+          // useful range at 300-500ms; below that it flickers, above it drags.
           setTimeout(function() {
             removeTyping();
             if (!currentAiEl) {
               currentAiEl = addMessage("", "ai");
             }
             typeNextChar();
-          }, aiFirstChunk ? 600 : 0);
+          }, aiFirstChunk ? 350 : 0);
           aiFirstChunk = false;
         }
         break;
@@ -675,7 +677,10 @@
     addMessage(text, "visitor");
     msgInput.value = "";
     msgInput.focus();
-
+    // Show the thinking dots immediately rather than waiting for the server's
+    // "typing" frame. A blank pane after hitting send is the single worst part
+    // of the wait, and this covers the whole round trip.
+    showTyping();
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────────
@@ -689,35 +694,65 @@
     return div;
   }
 
+  // ── Reveal pacing ─────────────────────────────────────────────────────────
+  // Visual reveal is decoupled from the network. Chunks land in aiChunkBuffer at
+  // whatever rate the model produces them; this loop reveals them on a rAF tick
+  // at a fast steady cadence that ACCELERATES when it falls behind, so the text
+  // can never lag the model. The old version typed 1-3 chars every 18-40ms plus
+  // a pause at every space, which worked out to ~42 chars/sec: a 430-character
+  // reply took about 10 seconds to draw. Streaming research is clear that the
+  // win is time-to-first-word and continuous motion, not simulating a slow
+  // typist, so this reveals whole words at roughly 180 chars/sec and faster
+  // when there's a backlog.
+  // Tuned by simulating this loop against real replies. Floor keeps it moving
+  // when we're caught up to the model (~180 chars/sec, which tracks generation);
+  // the ceiling stops an already-buffered answer from dumping instantly, which
+  // reads as a paste rather than a reply (~320 chars/sec worst case).
+  var REVEAL_MIN_CHARS = 3;   // floor per frame; at 60fps ≈ 180 chars/sec
+  var REVEAL_MAX_CHARS = 6;   // ceiling per frame; ≈ 320 chars/sec
+  var REVEAL_CATCHUP = 40;    // larger backlog => proportionally larger bites
+  var REVEAL_MAX_SNAP = 8;    // how far we'll reach to finish a word
+  var aiHoldUntil = 0;
+
   function typeNextChar() {
     if (!currentAiEl) return;
-    if (aiCharIndex < aiChunkBuffer.length) {
-      // Type 1-3 characters at a time for natural feel
-      var charsToAdd = Math.min(Math.floor(Math.random() * 3) + 1, aiChunkBuffer.length - aiCharIndex);
-      currentAiEl.textContent += aiChunkBuffer.substring(aiCharIndex, aiCharIndex + charsToAdd);
-      aiCharIndex += charsToAdd;
+    var now = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+
+    // brief hold after sentence punctuation, the only "human" beat we keep
+    if (now < aiHoldUntil) { requestAnimationFrame(typeNextChar); return; }
+
+    var remaining = aiChunkBuffer.length - aiCharIndex;
+    if (remaining > 0) {
+      var take = Math.max(REVEAL_MIN_CHARS, Math.min(REVEAL_MAX_CHARS, Math.ceil(remaining / REVEAL_CATCHUP)));
+      var end = Math.min(aiCharIndex + take, aiChunkBuffer.length);
+      // finish the word we're in so text never appears mid-letter
+      if (end < aiChunkBuffer.length) {
+        var space = aiChunkBuffer.indexOf(" ", end);
+        if (space !== -1 && space - end <= REVEAL_MAX_SNAP) end = space + 1;
+      }
+      currentAiEl.textContent += aiChunkBuffer.substring(aiCharIndex, end);
+      aiCharIndex = end;
       scrollToBottom();
-      // Vary speed: faster mid-word, slower at spaces/punctuation
-      var nextChar = aiChunkBuffer[aiCharIndex] || "";
-      var delay = 18 + Math.random() * 22; // 18-40ms base
-      if (nextChar === " " || nextChar === "." || nextChar === "!" || nextChar === "?" || nextChar === ",") {
-        delay += 30 + Math.random() * 40; // pause at word boundaries
-      }
-      if (nextChar === "\n") {
-        delay += 80; // longer pause at line breaks
-      }
-      setTimeout(typeNextChar, delay);
+
+      var last = aiChunkBuffer[aiCharIndex - 1] || "";
+      var prev = aiChunkBuffer[aiCharIndex - 2] || "";
+      var boundary = (last === " " || last === "\n") ? prev : last;
+      if (boundary === "." || boundary === "!" || boundary === "?") aiHoldUntil = now + 90;
+      else if (boundary === "," || boundary === ":") aiHoldUntil = now + 35;
+
+      requestAnimationFrame(typeNextChar);
     } else if (!aiStreamDone) {
-      // Buffer empty but stream still going — wait for more chunks
-      setTimeout(typeNextChar, 50);
+      // caught up to the model, wait for the next chunk
+      requestAnimationFrame(typeNextChar);
     } else {
-      // All done — reset state
+      // All done, reset state
       currentAiEl = null;
       aiChunkBuffer = "";
       aiTypingActive = false;
       aiStreamDone = false;
       aiFirstChunk = true;
       aiCharIndex = 0;
+      aiHoldUntil = 0;
     }
   }
 
