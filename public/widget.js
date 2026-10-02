@@ -450,6 +450,13 @@
   });
 
   // ── Toggle widget ─────────────────────────────────────────────────────────
+  // Public hook so a host page can open the chat from its own buttons (shadow root is closed)
+  window.FDRChat = {
+    open: function () { if (!isOpen) toggleWidget(); },
+    close: function () { if (isOpen) toggleWidget(); },
+    toggle: function () { toggleWidget(); },
+  };
+
   function toggleWidget() {
     isOpen = !isOpen;
     if (isOpen) {
