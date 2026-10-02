@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import UserFooter from "./UserFooter";
 import SidebarNav from "./SidebarNav";
+import { installAuthFetch } from "../lib/authFetch";
+
+installAuthFetch(); // patch fetch before any page mounts and fetches
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

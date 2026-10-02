@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-const ADMIN_KEY = "fdr-admin-dj-2026";
+const ADMIN_KEY = ""; // auth now comes from the Clerk session (lib/authFetch.ts)
 
 // Only these Clerk user IDs / emails can access admin
 const ADMIN_EMAILS = ["djcotlow1981@gmail.com", "david.cotlow@gmail.com"];
