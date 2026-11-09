@@ -22,6 +22,9 @@
     channelId: scriptTag.getAttribute("data-channel-id") || "",
     position: scriptTag.getAttribute("data-position") || "right",
     greeting: scriptTag.getAttribute("data-greeting") || "",
+    // Opt-in: on phones, show an icon-only button and skip the proactive bubble,
+    // so the widget does not cover the host page's buttons.
+    mobileCompact: scriptTag.getAttribute("data-mobile-compact") === "true",
   };
 
   if (!CONFIG.businessId) {
@@ -357,6 +360,8 @@
     /* Mobile responsive */
     @media (max-width: 480px) {
       .fdr-fab { bottom: 20px; right: 16px; left: auto; padding: 13px 18px 13px 15px; font-size: 14px; }
+      .fdr-fab.fdr-compact { bottom: 14px; right: 12px; padding: 12px 13px; gap: 0; }
+      .fdr-fab.fdr-compact .fdr-label { display: none; }
       .fdr-window {
         right: 0; left: 0; bottom: 0; top: 0;
         width: 100%; max-width: 100%;
@@ -374,6 +379,7 @@
   fab.className = "fdr-fab";
   fab.setAttribute("aria-label", "Open chat");
   fab.innerHTML = '<span class="fdr-icon">💬</span><span class="fdr-label">Chat with us</span>';
+  if (CONFIG.mobileCompact) fab.classList.add("fdr-compact");
   fab.addEventListener("click", toggleWidget);
   shadow.appendChild(fab);
 
@@ -877,6 +883,7 @@
 
     function showProactiveMessage(message) {
       if (proactiveFired || isOpen || isConnected) return;
+      if (CONFIG.mobileCompact && window.matchMedia && window.matchMedia("(max-width: 480px)").matches) return;
       proactiveFired = true;
 
       // Pulse the button
